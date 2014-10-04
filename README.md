@@ -1,9 +1,9 @@
 # GPU plot generator for Burst coin.
 
 A GPU plot generator for Burst coin.
-Author: Cryo
-Bitcoin: 138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD
-Burst: BURST-YA29-QCEW-QXC3-BKXDL
+- Author: Cryo
+- Bitcoin: 138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD
+- Burst: BURST-YA29-QCEW-QXC3-BKXDL
 
 Based on the code of the official miner and dcct's plotgen.
 
@@ -19,11 +19,14 @@ Install OpenCL (available in the manufacturer SDKs) or find the include/lib file
 Modify the [PLATFORM] variable to one of [32] or [64] depending on the target platform.
 Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
 Example:
-OPENCL_INCLUDE = c:\AMDAPPSDK-2.9-1\include
-OPENCL_LIB = c:\AMDAPPSDK-2.9-1\lib\x86_64
 
-cd <this directory>
-make dist
+	OPENCL_INCLUDE = c:\AMDAPPSDK-2.9-1\include
+	OPENCL_LIB = c:\AMDAPPSDK-2.9-1\lib\x86_64
+
+Run the following commands :
+
+	cd <this directory>
+	make dist
 
 The [dist] folder contains all the necessary files to launch the GPU plotter.
 
@@ -36,11 +39,14 @@ You may have to install the opencl headers ([apt-get install opencl-headers] on 
 Modify the [PLATFORM] variable to one of [32] or [64] depending on the target platform.
 Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
 Example:
-OPENCL_INCLUDE = /opt/AMDAPPSDK-2.9-1/include
-OPENCL_LIB = /opt/AMDAPPSDK-2.9-1/lib/x86_64
 
-cd <this directory>
-make dist
+	OPENCL_INCLUDE = /opt/AMDAPPSDK-2.9-1/include
+	OPENCL_LIB = /opt/AMDAPPSDK-2.9-1/lib/x86_64
+
+Run the following commands :
+
+	cd <this directory>
+	make dist
 
 The [dist] folder contains all the necessary files to launch the GPU plotter.
 
@@ -49,7 +55,11 @@ The [dist] folder contains all the necessary files to launch the GPU plotter.
 The GPU plot generator needs a configured [devices.txt] file in order to work properly. The devices listed
 in this file will be used by the generation process to compute plots. Each device must be declared on its own
 line in the following format:
+
+````
 <platformId> <deviceId> <globalWorkSize> <localWorkSize> <hashesNumber>
+````
+
 - platformId: The platform id of the device. Can be retrieved with the [listPlatforms] command.
 - deviceId: The device id. Can be retrieved with the [listDevices] command.
 - globalWorkSize: The amount of nonces to process at the same time (determine the required amount of GPU memory). Should be a power of 2.
@@ -57,10 +67,13 @@ line in the following format:
 - hashesNumber: The number of hashes to compute per GPU calls. Must be between 1 and 8192. Use a value under 8192 only if you experience driver crashes or display freezes.
 
 Example [devices.txt] file content:
+
 	0 0 1024 128 8192
 	0 1 2048 64 10
 
 ## How to use
+
+Use the commands below to have the commands list and usage:
 
 	./gpuPlotGenerator
 	Displays a full help message with all the available commands.
@@ -75,27 +88,24 @@ Refer to the help message of each command for more information.
 
 ## Troubleshooting
 
-Q. No platform is detected on the computer.
-Q. No device is found on the platforms.
-A. Make sure your hardware is OpenCL compliant. Make sure you have the last drivers installed.
+#### No platform is detected on the computer.
+#### No device is found on the platforms.
+Make sure your hardware is OpenCL compliant. Make sure you have the last drivers installed.
 
-Q. After launch, the display freezes and the screen goes black. Few seconds later, the display comes back
-   but the program fails with an OpenCL error and the OS display an information message about a display driver crash.
-Q. After launch, the display freezes, the screen goes black and, finally, the computer reboots.
-A. The graphic card you use is bound to your display. As the plot generation is an heavy process, it uses all
-   of your graphic card resources in one call. To prevent display crashes, the driver kills all kernels that hang for too long.
-   To solve this issue, the global work needs to be split. This is the purpose of the <hashesNumber> parameter.
-   Begin with a low value (from 1 to 10), and try to increase it until you experience some display lags.
+#### After launch, the display freezes and the screen goes black. Few seconds later, the display comes back but the program fails with an OpenCL error and the OS display an information message about a display driver crash.
+#### After launch, the display freezes, the screen goes black and, finally, the computer reboots.
+The graphic card you use is bound to your display. As the plot generation is an heavy process, it uses all of your graphic card resources in one call. To prevent display crashes, the driver kills all kernels that hang for too long.
 
-Q. The program fails with a [std::bad_alloc] message.
-A. There is not enough available memory on the CPU side. Try a lower value for the <staggerSize> parameter.
+To solve this issue, the global work needs to be split. This is the purpose of the <hashesNumber> parameter. Begin with a low value (from 1 to 10), and try to increase it until you experience some display lags.
 
-Q. The program fails with a [CL_INVALID_WORK_GROUP_SIZE] OpenCL error code.
-A. The specified <globalWorkGroup> isn't valid. Start with a low value (32 or 64) and increase it progressively.
-   Try to use powers of 2 that are much more compliant among graphic cards.
+#### The program fails with a [std::bad_alloc] message.
+There is not enough available memory on the CPU side. Try a lower value for the <staggerSize> parameter.
 
-Q. The nonces/minutes are incredibly low (no more than few hundreds).
-A. There are many causes for that:
+#### The program fails with a [CL_INVALID_WORK_GROUP_SIZE] OpenCL error code.
+The specified <globalWorkGroup> isn't valid. Start with a low value (32 or 64) and increase it progressively. Try to use powers of 2 that are much more compliant among graphic cards.
+
+#### The nonces/minutes are incredibly low (no more than few hundreds).
+There are many causes for that:
 - The configured <globalWorkSize> and <localWorkSize> for your cards are not optimal. Try with different values.
 - Some of your cards causes bottlenecks. Tests them one after another to detect the one causing it and try to improve its parameters.
 - For NVidia owners: OpenCL implementation is under-efficient on some NVidia cards. Try to tweak your device parameters. If there is no significant improvements, you'll need a CUDA version of this program.
