@@ -43,7 +43,7 @@ dist: all
 	@$(ECHO) Generating distribution
 	@$(MKDIR) -p $(DIST_PATH)
 	@$(CP) $(EXE) $(DIST_PATH)
-	@$(CP) README $(DIST_PATH)
+	@$(CP) README.md $(DIST_PATH)
 	@$(CP) CHANGELOG $(DIST_PATH)
 	@$(CP) LICENSE $(DIST_PATH)
 	@$(TOUCH) $(DIST_PATH)/devices.txt
