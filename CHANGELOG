@@ -1,0 +1,44 @@
+3.0.0 (02/10/2014)
+  - Multi-GPU support.
+  - [devices.txt] configuration file added.
+  - [verify] command added.
+  - [list] command split in two ([listPlatforms] and [listDevices]).
+  - More details added in [listDevices] command.
+  - Correlation between <staggerSize> and <globalWorkSize> removed.
+  - OpenCL error codes displayed for better debugging.
+  - Details added in usages.
+  - README updated and improved.
+  - CHANGELOG file added.
+  - CREDITS file added.
+  - LICENSE file added.
+
+2.1.1 (13/09/2014)
+  - Shabal include corrected.
+
+2.1.0 (12/09/2014)
+  - Enhanced kernel.
+
+2.0.1 (12/09/2014)
+  - Using time() function rather than clock() (possible bug on some platforms).
+  - Nonces/minutes repeated at the end of the generation process.
+  - ETA and elapsed time added.
+
+2.0.0 (11/09/2014)
+  - Application design reviewed (commands added).
+  - OpenCL platforms and devices listing added ([list] command).
+  - Platform and device selection added as generation parameters.
+  - Enhanced CPU and GPU support (removed the auto-selection and fallback).
+  - Clearer information display.
+  - Displaying the % and nonces/minutes while generating plots.
+  - README added with some basic build and run instructions.
+
+1.1.1 (10/09/2014)
+  - Kernel split in three.
+  - <hashesNumber> argument added to bypass screen freezes.
+
+1.1.0 (09/09/2014)
+  - Kernel improved and split in submodules (requires less memory).
+  - <path> and <threads> arguments added to main program.
+
+1.0.0 (07/09/2014)
+  - First stable version.
