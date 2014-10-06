@@ -73,11 +73,11 @@ void PlotsFile::seek(std::streamoff p_offset) {
 	std::streamoff current = m_stream.tellg();
 
 	for(std::streamoff i = current ; i < p_offset ; i += IO_CAP) {
-		m_stream.seekg(std::min(p_offset - current, (std::streamoff)IO_CAP), std::ios::cur);
+		m_stream.seekg(std::min(p_offset - i, (std::streamoff)IO_CAP), std::ios::cur);
 	}
 
 	for(std::streamoff i = p_offset ; i < current ; i += IO_CAP) {
-		m_stream.seekg(-std::min(current - p_offset, (std::streamoff)IO_CAP), std::ios::cur);
+		m_stream.seekg(-std::min(current - i, (std::streamoff)IO_CAP), std::ios::cur);
 	}
 }
 

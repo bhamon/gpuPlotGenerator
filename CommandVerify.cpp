@@ -76,15 +76,18 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 
 		std::cout << "----" << std::endl;
 
-		std::vector<unsigned long long> sizeUnits {1024, 1024, 1024};
-		std::vector<std::string> sizeLabels {"KB", "MB", "GB", "TB"};
+		std::vector<unsigned long long> sizeUnitsKB {1024, 1024, 1024};
+		std::vector<std::string> sizeLabelsKB {"KB", "MB", "GB", "TB"};
+
+		std::vector<unsigned long long> sizeUnitsB {1024, 1024, 1024, 1024};
+		std::vector<std::string> sizeLabelsB {"B", "KB", "MB", "GB", "TB"};
 
 		unsigned long long noncesMemory = ((unsigned long long)(commonEnd - commonStart + 1) * PLOT_SIZE) >> 10;
-		std::size_t generatedBufferSize = generated.getStaggerSize() * PLOT_SIZE;
-		std::size_t referenceBufferSize = reference.getStaggerSize() * PLOT_SIZE;
-		unsigned long long cpuMemory = ((unsigned long long)generatedBufferSize + referenceBufferSize) >> 10;
-		std::cout << "Common nonces: " << commonStart << " to " << commonEnd << " (" << cryo::util::formatValue(noncesMemory, sizeUnits, sizeLabels) << ")" << std::endl;
-		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory, sizeUnits, sizeLabels) << std::endl;
+		std::size_t generatedBufferSize = SCOOP_SIZE;
+		std::size_t referenceBufferSize = SCOOP_SIZE;
+		unsigned long long cpuMemory = (unsigned long long)generatedBufferSize + referenceBufferSize;
+		std::cout << "Common nonces: " << commonStart << " to " << commonEnd << " (" << cryo::util::formatValue(noncesMemory, sizeUnitsKB, sizeLabelsKB) << ")" << std::endl;
+		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory, sizeUnitsB, sizeLabelsB) << std::endl;
 		std::cout << "----" << std::endl;
 
 		generatedBuffer = new unsigned char[generatedBufferSize];
@@ -118,8 +121,8 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 			std::streamoff referenceNonceStaggerDecal = reference.getNonceStaggerDecal(commonStart + i);
 
 			for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-				generated.seek(generatedNonceStaggerOffset + generatedNonceStaggerDecal + j * generated.getStaggerSize());
-				reference.seek(referenceNonceStaggerOffset + referenceNonceStaggerDecal + j * reference.getStaggerSize());
+				generated.seek(generatedNonceStaggerOffset + generatedNonceStaggerDecal + (std::streamoff)j * generated.getStaggerSize());
+				reference.seek(referenceNonceStaggerOffset + referenceNonceStaggerDecal + (std::streamoff)j * reference.getStaggerSize());
 
 				generated.read(generatedBuffer, SCOOP_SIZE);
 				reference.read(referenceBuffer, SCOOP_SIZE);
