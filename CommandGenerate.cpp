@@ -100,7 +100,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 		unsigned long long endNonce = startNonce + noncesNumber - 1;
 		unsigned long long noncesMemory = ((unsigned long long)noncesNumber * PLOT_SIZE) >> 20;
-		std::size_t bufferStaggerSize = staggerSize * PLOT_SIZE;
+		std::size_t bufferStaggerSize = (std::size_t)staggerSize * PLOT_SIZE;
 		std::size_t bufferPlotsSize = PLOT_SIZE;
 		unsigned long long cpuMemory = ((unsigned long long)bufferStaggerSize + bufferPlotsSize) >> 20;
 		std::cout << "Path: " << path << std::endl;
@@ -292,7 +292,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 					unsigned int currentNonce = noncesWritten + i;
 					unsigned int staggerNonce = currentNonce % staggerSize;
 					for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-						std::copy_n(bufferPlots + j, SCOOP_SIZE, bufferStagger + staggerNonce * SCOOP_SIZE + j * staggerSize);
+						std::copy_n(bufferPlots + j, SCOOP_SIZE, bufferStagger + (std::size_t)staggerNonce * SCOOP_SIZE + (std::size_t)j * staggerSize);
 					}
 
 					if(staggerNonce == staggerSize - 1) {
