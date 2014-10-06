@@ -1,3 +1,7 @@
+3.0.1 (06/10/2014)
+  - Support for stagger size over 4GB corrected.
+  - Exceptions in devices threads now properly handled.
+
 3.0.0 (02/10/2014)
   - Multi-GPU support.
   - [devices.txt] configuration file added.
