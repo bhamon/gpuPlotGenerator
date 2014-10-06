@@ -302,12 +302,12 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 				noncesWritten += workSize;
 			} catch(const std::exception& ex) {
-				generationError = true;
-
 				std::unique_lock<std::mutex> lock(mutex);
+				generationError = true;
+				pendingTasks.clear();
 				barrier.notify_all();
 
-				throw ex;
+				throw;
 			}
 
 			{
