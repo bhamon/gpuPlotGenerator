@@ -9,6 +9,7 @@ namespace cryo {
 namespace util {
 
 std::vector<std::string> split(const std::string& p_string, const std::string& p_separator);
+template<typename Iterator> std::string join(Iterator& p_begin, Iterator& p_end, const std::string& p_separator);
 
 template<typename T> std::vector<T> splitValue(T p_value, const std::vector<T>& p_units) throw (std::exception);
 template<typename T> std::string formatValue(T p_value, const std::vector<T>& p_units, const std::vector<std::string>& p_labels) throw (std::exception);
@@ -20,6 +21,22 @@ template<typename T> std::string formatValue(T p_value, const std::vector<T>& p_
 
 namespace cryo {
 namespace util {
+
+template<typename Iterator>
+std::string join(Iterator p_begin, Iterator p_end, const std::string& p_separator) {
+	if(p_begin == p_end) {
+		return "";
+	}
+
+	std::ostringstream out;
+	out << *p_begin++;
+
+	for(; p_begin != p_end ; p_begin++) {
+		out << p_separator << *p_begin;
+	}
+
+	return out.str();
+}
 
 template<typename T>
 std::vector<T> splitValue(T p_value, const std::vector<T>& p_units) throw (std::exception) {
