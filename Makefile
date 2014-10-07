@@ -43,7 +43,7 @@ dist: all
 	@$(ECHO) Generating distribution
 	@$(MKDIR) -p $(DIST_PATH)
 	@$(CP) $(EXE) $(DIST_PATH)
-	@$(CP) README.md $(DIST_PATH)
+	@$(CP) README.md $(DIST_PATH)/README
 	@$(CP) CHANGELOG $(DIST_PATH)
 	@$(CP) LICENSE $(DIST_PATH)
 	@$(TOUCH) $(DIST_PATH)/devices.txt
@@ -51,7 +51,6 @@ dist: all
 	@$(CP) kernel/util.cl $(DIST_PATH)/kernel
 	@$(CP) kernel/shabal.cl $(DIST_PATH)/kernel
 	@$(CP) kernel/nonce.cl $(DIST_PATH)/kernel
-	@$(MKDIR) -p $(DIST_PATH)/plots
 
 distclean: clean
 	@$(ECHO) Dist cleaning project
@@ -62,6 +61,5 @@ distclean: clean
 	@$(RM) -f $(DIST_PATH)/LICENSE
 	@$(RM) -f $(DIST_PATH)/devices.txt
 	@$(RM) -Rf $(DIST_PATH)/kernel
-	@$(RM) -Rf $(DIST_PATH)/plots
 
 rebuild: distclean all

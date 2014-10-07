@@ -124,13 +124,13 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		devices = new cl_device_id*[platformsNumber];
 		devicesNumber = new cl_uint[platformsNumber];
 		for(std::size_t i = 0 ; i < platformsNumber ; ++i) {
-			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU | CL_DEVICE_TYPE_GPU, 0, 0, &devicesNumber[i]);
+			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, 0, &devicesNumber[i]);
 			if(error != CL_SUCCESS) {
 				throw OpenclError(error, "Unable to retrieve the OpenCL devices number");
 			}
 
 			devices[i] = new cl_device_id[devicesNumber[i]];
-			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU | CL_DEVICE_TYPE_GPU, devicesNumber[i], devices[i], 0);
+			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, devicesNumber[i], devices[i], 0);
 			if(error != CL_SUCCESS) {
 				throw OpenclError(error, "Unable to retrieve the OpenCL devices");
 			}

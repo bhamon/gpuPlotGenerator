@@ -1,3 +1,11 @@
+3.0.2 (07/10/2014)
+  - Restriction removed from the devices listing to add APU support.
+  - [Max work-item sizes] info added in the devices details (hint for the <localWorkSize> parameter).
+
+3.0.1 (06/10/2014)
+  - Support for stagger size over 4GB corrected.
+  - Exceptions in devices threads now properly handled.
+
 3.0.0 (02/10/2014)
   - Multi-GPU support.
   - [devices.txt] configuration file added.

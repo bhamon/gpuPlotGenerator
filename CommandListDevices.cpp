@@ -69,13 +69,13 @@ int CommandListDevices::execute(const std::vector<std::string>& p_args) {
 			throw OpenclError(error, "Unable to retrieve the OpenCL platforms");
 		}
 
-		error = clGetDeviceIDs(platforms[platformId], CL_DEVICE_TYPE_CPU | CL_DEVICE_TYPE_GPU, 0, 0, &devicesNumber);
+		error = clGetDeviceIDs(platforms[platformId], CL_DEVICE_TYPE_ALL, 0, 0, &devicesNumber);
 		if(error != CL_SUCCESS) {
 			throw OpenclError(error, "Unable to retrieve the OpenCL devices number");
 		}
 
 		devices = new cl_device_id[devicesNumber];
-		error = clGetDeviceIDs(platforms[platformId], CL_DEVICE_TYPE_CPU | CL_DEVICE_TYPE_GPU, devicesNumber, devices, 0);
+		error = clGetDeviceIDs(platforms[platformId], CL_DEVICE_TYPE_ALL, devicesNumber, devices, 0);
 		if(error != CL_SUCCESS) {
 			throw OpenclError(error, "Unable to retrieve the OpenCL devices");
 		}
@@ -94,10 +94,18 @@ int CommandListDevices::execute(const std::vector<std::string>& p_args) {
 			cl_device_type type;
 			clGetDeviceInfo(devices[i], CL_DEVICE_TYPE, sizeof(cl_device_type), (void*)&type, 0);
 			std::cout << "Type:                        ";
-			if(type & CL_DEVICE_TYPE_CPU) {
-				std::cout << "CPU";
-			} else if(type & CL_DEVICE_TYPE_GPU) {
-				std::cout << "GPU";
+			switch(type) {
+				case CL_DEVICE_TYPE_CPU:
+					std::cout << "CPU";
+				break;
+				case CL_DEVICE_TYPE_GPU:
+					std::cout << "CPU";
+				break;
+				case CL_DEVICE_TYPE_ACCELERATOR:
+					std::cout << "Accelerator";
+				break;
+				default:
+					std::cout << "Unknown";
 			}
 			std::cout << std::endl;
 
@@ -148,6 +156,13 @@ int CommandListDevices::execute(const std::vector<std::string>& p_args) {
 			cl_uint maxComputeUnits;
 			clGetDeviceInfo(devices[i], CL_DEVICE_MAX_COMPUTE_UNITS , sizeof(cl_uint), (void*)&maxComputeUnits, 0);
 			std::cout << "Max compute units:           " << maxComputeUnits << std::endl;
+
+			cl_uint maxWorkItemDimensions;
+			clGetDeviceInfo(devices[i], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS , sizeof(cl_uint), (void*)&maxWorkItemDimensions, 0);
+			std::size_t* maxWorkItemSizes = new std::size_t[maxWorkItemDimensions];
+			clGetDeviceInfo(devices[i], CL_DEVICE_MAX_WORK_ITEM_SIZES , sizeof(std::size_t) * maxWorkItemDimensions, (void*)maxWorkItemSizes, 0);
+			std::cout << "Max work-item sizes:         (" << cryo::util::join(maxWorkItemSizes, maxWorkItemSizes + maxWorkItemDimensions, ", ") << ")" << std::endl;
+			delete[] maxWorkItemSizes;
 		}
 	} catch(const OpenclError& ex) {
 		std::cout << "[ERROR] [" << ex.getCode() << "] " << ex.what() << std::endl;
