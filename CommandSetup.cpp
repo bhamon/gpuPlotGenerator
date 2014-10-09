@@ -124,12 +124,11 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 					}
 
 					std::shared_ptr<OpenclDevice> device(devices[platformId][deviceId]);
-					std::vector<std::size_t> maxWorkItemSizes(device->getMaxWorkItemSizes());
 					std::shared_ptr<GenerationConfig> config(new GenerationConfig(
 						platformId,
 						deviceId,
 						std::min(device->getGlobalMemorySize() / PLOT_SIZE, device->getMaxMemoryAllocationSize() / PLOT_SIZE),
-						std::max((std::size_t)1, maxWorkItemSizes[0] / 4) * 3,
+						1,
 						PLOT_SIZE / HASH_SIZE
 					));
 
@@ -137,6 +136,10 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 
 					std::cout << "Global work size (" << config->getGlobalWorkSize() << " recommended): ";
 					std::cin >> config->globalWorkSize();
+
+					std::vector<std::size_t> maxWorkItemSizes(device->getMaxWorkItemSizes());
+					config->setLocalWorkSize(std::max((std::size_t)1, maxWorkItemSizes[0] / 4) * 3);
+					config->normalize();
 
 					std::cout << "Local work size (" << config->getLocalWorkSize() << " recommended): ";
 					std::cin >> config->localWorkSize();
