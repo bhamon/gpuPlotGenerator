@@ -10,42 +10,52 @@
 #ifndef CRYO_GPU_PLOT_GENERATOR_OPENCL_DEVICE_H
 #define CRYO_GPU_PLOT_GENERATOR_OPENCL_DEVICE_H
 
-#include <exception>
 #include <string>
+#include <exception>
+#include <vector>
+#include <memory>
 #include <CL/cl.h>
+
+#include "OpenclPlatform.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
 
 class OpenclDevice {
 	private:
-		std::size_t m_globalWorkSize;
-		std::size_t m_localWorkSize;
-		unsigned int m_hashesNumber;
-		cl_context m_context;
-		cl_command_queue m_commandQueue;
-		cl_mem m_buffer;
-		cl_program m_program;
-		cl_kernel m_kernels[3];
+		cl_device_id m_handle;
 
 	public:
-		OpenclDevice(cl_device_id& p_device, std::size_t p_globalWorkSize, std::size_t p_localWorkSize, unsigned int p_hashesNumber) throw (std::exception);
-		OpenclDevice(const OpenclDevice& p_other) = delete;
+		OpenclDevice(const cl_device_id& p_handle) throw (std::exception);
+		OpenclDevice(const OpenclDevice& p_other);
 
 		virtual ~OpenclDevice() throw ();
 
-		OpenclDevice& operator=(const OpenclDevice& p_other) = delete;
+		OpenclDevice& operator=(const OpenclDevice& p_other);
 
-		inline std::size_t getGlobalWorkSize() const;
-		inline std::size_t getLocalWorkSize() const;
-		inline unsigned int getHashesNumber() const;
-		inline unsigned long long getBufferSize() const;
+		inline const cl_device_id& getHandle() const;
 
-		void computePlots(unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_workSize) throw (std::exception);
-		void readPlots(unsigned char* p_buffer, std::size_t p_offset, unsigned int p_size) throw (std::exception);
+		std::string getType() const throw (std::exception);
+		std::string getName() const throw (std::exception);
+		std::string getVendor() const throw (std::exception);
+		std::string getVersion() const throw (std::exception);
+		std::string getDriverVersion() const throw (std::exception);
+		unsigned int getMaxClockFrequency() const throw (std::exception);
+		unsigned int getMaxComputeUnits() const throw (std::exception);
+		unsigned long long getGlobalMemorySize() const throw (std::exception);
+		unsigned long long getMaxMemoryAllocationSize() const throw (std::exception);
+		std::size_t getMaxWorkGroupSize() const throw (std::exception);
+		unsigned long long getLocalMemorySize() const throw (std::exception);
+		std::vector<std::size_t> getMaxWorkItemSizes() const throw (std::exception);
 
 	private:
-		std::string loadSource(const std::string& p_file) const throw (std::exception);
+		std::string getInfoString(const cl_platform_info& p_paramName) const throw (std::exception);
+		unsigned int getInfoUint(const cl_platform_info& p_paramName) const throw (std::exception);
+		std::size_t getInfoSizet(const cl_platform_info& p_paramName) const throw (std::exception);
+		unsigned long long getInfoUlong(const cl_platform_info& p_paramName) const throw (std::exception);
+
+	public:
+		static std::vector<std::shared_ptr<OpenclDevice>> list(const std::shared_ptr<OpenclPlatform>& p_platform) throw (std::exception);
 };
 
 }}
@@ -53,20 +63,8 @@ class OpenclDevice {
 namespace cryo {
 namespace gpuPlotGenerator {
 
-inline std::size_t OpenclDevice::getGlobalWorkSize() const {
-	return m_globalWorkSize;
-}
-
-inline std::size_t OpenclDevice::getLocalWorkSize() const {
-	return m_localWorkSize;
-}
-
-inline unsigned int OpenclDevice::getHashesNumber() const {
-	return m_hashesNumber;
-}
-
-inline unsigned long long OpenclDevice::getBufferSize() const {
-	return m_globalWorkSize * GEN_SIZE;
+inline const cl_device_id& OpenclDevice::getHandle() const {
+	return m_handle;
 }
 
 }}

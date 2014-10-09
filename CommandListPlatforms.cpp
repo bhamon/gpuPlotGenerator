@@ -8,11 +8,13 @@
 */
 
 #include <iostream>
-#include <cstdlib>
-#include <CL/cl.h>
+#include <vector>
+#include <memory>
+#include <exception>
 
-#include "CommandListPlatforms.h"
 #include "OpenclError.h"
+#include "OpenclPlatform.h"
+#include "CommandListPlatforms.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -34,62 +36,29 @@ void CommandListPlatforms::help() const {
 }
 
 int CommandListPlatforms::execute(const std::vector<std::string>&) {
-	cl_platform_id* platforms = 0;
-	cl_uint platformsNumber = 0;
-
 	int returnCode = 0;
 
 	try {
-		cl_int error;
+		std::vector<std::shared_ptr<OpenclPlatform>> platforms(OpenclPlatform::list());
+		std::cout << "Platforms number: " << platforms.size() << std::endl;
 
-		error = clGetPlatformIDs(0, 0, &platformsNumber);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Unable to retrieve the OpenCL platforms number");
-		}
-
-		platforms = new cl_platform_id[platformsNumber];
-		error = clGetPlatformIDs(platformsNumber, platforms, 0);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Unable to retrieve the OpenCL platforms");
-		}
-
-		std::cout << "Platforms number: " << platformsNumber << std::endl;
-		for(cl_uint i = 0 ; i < platformsNumber ; ++i) {
+		std::size_t i = 0;
+		for(const std::shared_ptr<OpenclPlatform>& platform : platforms) {
 			std::cout << "----" << std::endl;
-			std::cout << "Id:       " << i << std::endl;
-
-			std::size_t size;
-			char* buffer;
-
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 0, 0, &size);
-			buffer = new char[size];
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, size, (void*)buffer, 0);
-			std::cout << "Name:     " << buffer << std::endl;
-			delete[] buffer;
-
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 0, 0, &size);
-			buffer = new char[size];
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, size, (void*)buffer, 0);
-			std::cout << "Vendor:   " << buffer << std::endl;
-			delete[] buffer;
-
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 0, 0, &size);
-			buffer = new char[size];
-			clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, size, (void*)buffer, 0);
-			std::cout << "Version:  " << buffer << std::endl;
-			delete[] buffer;
+			std::cout << "Id:       " << i++ << std::endl;
+			std::cout << "Name:     " << platform->getName() << std::endl;
+			std::cout << "Vendor:   " << platform->getVendor() << std::endl;
+			std::cout << "Version:  " << platform->getVersion() << std::endl;
 		}
 	} catch(const OpenclError& ex) {
-		std::cout << "[ERROR] An OpenCL error occured in the generation process, aborting..." << std::endl;
-		std::cout << "[ERROR] [" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
+		std::cout << std::endl;
+		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
 		returnCode = -1;
 	} catch(const std::exception& ex) {
-		std::cout << "[ERROR] An error occured in the generation process, aborting..." << std::endl;
+		std::cout << std::endl;
 		std::cout << "[ERROR] " << ex.what() << std::endl;
 		returnCode = -1;
 	}
-
-	if(platforms) { delete[] platforms; }
 
 	return returnCode;
 }

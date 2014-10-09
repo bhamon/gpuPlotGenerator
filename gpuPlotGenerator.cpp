@@ -9,11 +9,13 @@
 
 #include <iostream>
 #include <string>
+#include <map>
 #include <vector>
 
 #include "CommandHelp.h"
 #include "CommandListPlatforms.h"
 #include "CommandListDevices.h"
+#include "CommandSetup.h"
 #include "CommandGenerate.h"
 #include "CommandVerify.h"
 
@@ -31,6 +33,7 @@ int main(int p_argc, char* p_argv[]) {
 	commands.insert(CommandsMap::value_type("help", new cryo::gpuPlotGenerator::CommandHelp(commands)));
 	commands.insert(CommandsMap::value_type("listPlatforms", new cryo::gpuPlotGenerator::CommandListPlatforms()));
 	commands.insert(CommandsMap::value_type("listDevices", new cryo::gpuPlotGenerator::CommandListDevices()));
+	commands.insert(CommandsMap::value_type("setup", new cryo::gpuPlotGenerator::CommandSetup()));
 	commands.insert(CommandsMap::value_type("generate", new cryo::gpuPlotGenerator::CommandGenerate()));
 	commands.insert(CommandsMap::value_type("verify", new cryo::gpuPlotGenerator::CommandVerify()));
 

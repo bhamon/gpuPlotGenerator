@@ -13,6 +13,9 @@ const unsigned int HASH_CAP = 4096;
 const unsigned int GEN_SIZE = PLOT_SIZE + 16;
 const unsigned int IO_CAP = 1000000000;
 
+const std::string DEVICES_FILE("devices.txt");
+const std::string KERNEL_PATH("kernel");
+
 }}
 
 #endif
