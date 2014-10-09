@@ -12,7 +12,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <stdexcept>
-#include <fstream>
 #include <chrono>
 #include <algorithm>
 #include <list>
@@ -21,14 +20,16 @@
 #include <tuple>
 #include <future>
 #include <memory>
-#include <CL/cl.h>
 
 #include "constants.h"
 #include "util.h"
-#include "CommandGenerate.h"
 #include "OpenclError.h"
+#include "OpenclPlatform.h"
 #include "OpenclDevice.h"
 #include "PlotsFile.h"
+#include "GenerationConfig.h"
+#include "GenerationContext.h"
+#include "CommandGenerate.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -61,23 +62,18 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		return -1;
 	}
 
-	cl_platform_id* platforms = 0;
-	cl_uint platformsNumber = 0;
-	cl_device_id** devices = 0;
-	cl_uint* devicesNumber = 0;
 	unsigned char* bufferStagger = 0;
 	unsigned char* bufferPlots = 0;
-	std::vector<std::shared_ptr<OpenclDevice>> configuredDevices;
 	std::vector<std::shared_ptr<std::thread>> threads;
 
 	int returnCode = 0;
 
 	try {
 		std::string path(p_args[0]);
-		unsigned long long address = strtoull(p_args[1].c_str(), 0, 10);
-		unsigned long long startNonce = strtoull(p_args[2].c_str(), 0, 10);
-		unsigned int noncesNumber = atol(p_args[3].c_str());
-		unsigned int staggerSize = atol(p_args[4].c_str());
+		unsigned long long address = std::strtoull(p_args[1].c_str(), 0, 10);
+		unsigned long long startNonce = std::strtoull(p_args[2].c_str(), 0, 10);
+		unsigned int noncesNumber = std::atol(p_args[3].c_str());
+		unsigned int staggerSize = std::atol(p_args[4].c_str());
 
 		std::cout << "Checking input parameters..." << std::endl;
 
@@ -108,87 +104,40 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory, sizeUnits, sizeLabels) << std::endl;
 		std::cout << "----" << std::endl;
 
-		cl_int error;
+		std::cout << "Loading platforms..." << std::endl;
+		std::vector<std::shared_ptr<OpenclPlatform>> platforms(OpenclPlatform::list());
 
-		error = clGetPlatformIDs(0, 0, &platformsNumber);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Unable to retrieve the OpenCL platforms number");
+		std::cout << "Loading devices..." << std::endl;
+		std::vector<std::vector<std::shared_ptr<OpenclDevice>>> devices;
+		for(const std::shared_ptr<OpenclPlatform>& platform : platforms) {
+			devices.push_back(OpenclDevice::list(platform));
 		}
 
-		platforms = new cl_platform_id[platformsNumber];
-		error = clGetPlatformIDs(platformsNumber, platforms, 0);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Unable to retrieve the OpenCL platforms");
-		}
+		std::cout << "Loading devices configurations..." << std::endl;
+		std::vector<std::shared_ptr<GenerationConfig>> configs(GenerationConfig::loadFromFile(DEVICES_FILE));
 
-		devices = new cl_device_id*[platformsNumber];
-		devicesNumber = new cl_uint[platformsNumber];
-		for(std::size_t i = 0 ; i < platformsNumber ; ++i) {
-			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, 0, &devicesNumber[i]);
-			if(error != CL_SUCCESS) {
-				throw OpenclError(error, "Unable to retrieve the OpenCL devices number");
-			}
-
-			devices[i] = new cl_device_id[devicesNumber[i]];
-			error = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, devicesNumber[i], devices[i], 0);
-			if(error != CL_SUCCESS) {
-				throw OpenclError(error, "Unable to retrieve the OpenCL devices");
-			}
-		}
-
-		std::cout << "Initializing OpenCL devices..." << std::endl;
-		std::ifstream devicesConfig("devices.txt", std::ios::in);
-		if(!devicesConfig) {
-			throw std::runtime_error("Unable to find the devices configuration file");
-		}
-
-		char buf[256];
-		for(unsigned int i = 0 ; devicesConfig.getline(buf, 256) ; ++i) {
-			std::vector<std::string> parts(cryo::util::split(buf, " "));
-			if(parts.size() != 5) {
-				std::cout << "[ERROR][" << i << "] Invalid parameters count, ignoring device" << std::endl;
-				continue;
-			}
-
-			unsigned int platformId = atol(parts[0].c_str());
-			unsigned int deviceId = atol(parts[1].c_str());
-			std::size_t globalWorkSize = atol(parts[2].c_str());
-			std::size_t localWorkSize = atol(parts[3].c_str());
-			unsigned int hashesNumber = atol(parts[4].c_str());
-
-			if(platformId >= platformsNumber) {
+		std::cout << "Initializing generation contexts..." << std::endl;
+		std::vector<std::shared_ptr<GenerationContext>> contexts;
+		std::size_t i = 0;
+		for(std::shared_ptr<GenerationConfig>& config : configs) {
+			if(config->getPlatform() >= platforms.size()) {
 				std::cout << "[ERROR][" << i << "] No platform found with the provided id, ignoring device" << std::endl;
 				continue;
-			} else if(deviceId >= devicesNumber[platformId]) {
+			} else if(config->getDevice() >= devices[config->getPlatform()].size()) {
 				std::cout << "[ERROR][" << i << "] No device found with the provided id, ignoring device" << std::endl;
 				continue;
 			}
 
-			if(localWorkSize > globalWorkSize) {
-				std::cout << "[WARNING] <localWorkSize> can't be greater than <globalWorkSize>, correcting it..." << std::endl;
-				localWorkSize = globalWorkSize;
-			}
+			config->normalize();
+			contexts.push_back(std::shared_ptr<GenerationContext>(new GenerationContext(config, devices[config->getPlatform()][config->getDevice()])));
+			std::cout << "[INFO][" << i << "] Used memory: " << cryo::util::formatValue(config->getBufferSize() >> 20, sizeUnits, sizeLabels) << std::endl;
 
-			if(hashesNumber == 0) {
-				std::cout << "[WARNING] <hashesNumber> can't be equal to zero, correcting it..." << std::endl;
-				hashesNumber = 1;
-			} else if(hashesNumber > PLOT_SIZE / HASH_SIZE) {
-				std::cout << "[WARNING] <hashesNumber> can't be greater than number of hashes in a plot, correcting it..." << std::endl;
-				hashesNumber = PLOT_SIZE / HASH_SIZE;
-			}
-
-			std::shared_ptr<OpenclDevice> device(new OpenclDevice(devices[platformId][deviceId], globalWorkSize, localWorkSize, hashesNumber));
-			std::cout << "GPU[" << i << "] memory: " << cryo::util::formatValue(device->getBufferSize() >> 20, sizeUnits, sizeLabels) << std::endl;
-
-			configuredDevices.push_back(device);
+			++i;
 		}
 
-		if(configuredDevices.size() == 0) {
-			throw std::runtime_error("No configured devices found");
+		if(contexts.size() == 0) {
+			throw std::runtime_error("No properly configured device found");
 		}
-
-		devicesConfig.close();
-		std::cout << "----" << std::endl;
 
 		std::cout << "Creating CPU stagger buffer..." << std::endl;
 		bufferStagger = new unsigned char[bufferStaggerSize];
@@ -205,14 +154,15 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		std::cout << "Opening output file..." << std::endl;
 		PlotsFile out(path, address, startNonce, noncesNumber, staggerSize);
 
+		std::cout << "Generating nonces..." << std::endl;
 		unsigned int noncesDistributed = 0;
 		bool generationError = false;
 		std::mutex mutex;
 		std::condition_variable barrier;
-		typedef std::tuple<std::shared_ptr<OpenclDevice>, std::shared_future<unsigned int>> PendingTask;
+		typedef std::tuple<std::shared_ptr<GenerationContext>, std::shared_future<unsigned int>> PendingTask;
 		std::list<PendingTask> pendingTasks;
-		for(std::shared_ptr<OpenclDevice>& device : configuredDevices) {
-			std::shared_ptr<std::thread> thread(new std::thread([&](std::shared_ptr<OpenclDevice> p_device) {
+		for(std::shared_ptr<GenerationContext>& context : contexts) {
+			std::shared_ptr<std::thread> thread(new std::thread([&](std::shared_ptr<GenerationContext> p_context) {
 				while(true) {
 					unsigned long long nonce;
 					unsigned int workSize;
@@ -222,7 +172,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 						std::unique_lock<std::mutex> lock(mutex);
 						barrier.wait(lock, [&](){
 							for(PendingTask& pendingTask : pendingTasks) {
-								if(p_device == std::get<0>(pendingTask)) {
+								if(p_context == std::get<0>(pendingTask)) {
 									return false;
 								}
 							}
@@ -235,21 +185,21 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 						}
 
 						nonce = startNonce + noncesDistributed;
-						workSize = std::min((unsigned int)p_device->getGlobalWorkSize(), noncesNumber - noncesDistributed);
+						workSize = std::min((unsigned int)p_context->getConfig()->getGlobalWorkSize(), noncesNumber - noncesDistributed);
 						noncesDistributed += workSize;
 
-						pendingTasks.push_back(PendingTask(p_device, promise.get_future().share()));
+						pendingTasks.push_back(PendingTask(p_context, promise.get_future().share()));
 						barrier.notify_all();
 					}
 
 					try {
-						p_device->computePlots(address, nonce, workSize);
+						p_context->computePlots(address, nonce, workSize);
 						promise.set_value(workSize);
 					} catch(const std::exception& ex) {
 						promise.set_exception(std::current_exception());
 					}
 				}
-			}, device));
+			}, context));
 
 			threads.push_back(thread);
 		}
@@ -281,13 +231,13 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 			}
 
 			try {
-				std::shared_ptr<OpenclDevice> device(std::get<0>(*it));
+				std::shared_ptr<GenerationContext> context(std::get<0>(*it));
 				std::shared_future<unsigned int> future(std::get<1>(*it));
 
 				unsigned int workSize = future.get();
 
 				for(unsigned int i = 0 ; i < workSize ; ++i) {
-					device->readPlots(bufferPlots, i, 1);
+					context->readPlots(bufferPlots, i, 1);
 
 					unsigned int currentNonce = noncesWritten + i;
 					unsigned int staggerNonce = currentNonce % staggerSize;
@@ -328,7 +278,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		std::cout << "                    " << std::endl;
 	} catch(const OpenclError& ex) {
 		std::cout << std::endl;
-		std::cout << "[ERROR] [" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
+		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
 		returnCode = -1;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
@@ -342,15 +292,6 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 	if(bufferPlots) { delete[] bufferPlots; }
 	if(bufferStagger) { delete[] bufferStagger; }
-	if(devices) {
-		for(std::size_t i = 0 ; i < platformsNumber ; ++i) {
-			delete[] devices[i];
-		}
-
-		delete[] devicesNumber;
-		delete[] devices;
-	}
-	if(platforms) { delete[] platforms; }
 
 	return returnCode;
 }

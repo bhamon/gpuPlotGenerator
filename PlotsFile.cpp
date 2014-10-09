@@ -1,3 +1,12 @@
+/*
+	GPU plot generator for Burst coin.
+	Author: Cryo
+	Bitcoin: 138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD
+	Burst: BURST-YA29-QCEW-QXC3-BKXDL
+
+	Based on the code of the official miner and dcct's plotgen.
+*/
+
 #include <stdexcept>
 #include <sstream>
 #include <cstdlib>
@@ -27,10 +36,10 @@ PlotsFile::PlotsFile(const std::string& p_path) throw (std::exception) {
 		throw std::runtime_error("Invalid file name");
 	}
 
-	m_address = strtoull(parts[0].c_str(), 0, 10);
-	m_startNonce = strtoull(parts[1].c_str(), 0, 10);
-	m_noncesNumber = atol(parts[2].c_str());
-	m_staggerSize = atol(parts[3].c_str());
+	m_address = std::strtoull(parts[0].c_str(), 0, 10);
+	m_startNonce = std::strtoull(parts[1].c_str(), 0, 10);
+	m_noncesNumber = std::atol(parts[2].c_str());
+	m_staggerSize = std::atol(parts[3].c_str());
 
 	m_stream.open(p_path, std::ios::in | std::ios::out | std::ios::binary);
 	if(!m_stream) {
