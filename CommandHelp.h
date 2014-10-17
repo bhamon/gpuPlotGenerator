@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include "Command.h"
 
@@ -20,8 +21,10 @@ namespace cryo {
 namespace gpuPlotGenerator {
 
 class CommandHelp : public cryo::gpuPlotGenerator::Command {
+	public:
+		typedef std::map<std::string, std::shared_ptr<cryo::gpuPlotGenerator::Command>> CommandsMap;
+
 	private:
-		typedef std::map<std::string, cryo::gpuPlotGenerator::Command*> CommandsMap;
 		const CommandsMap& m_commands;
 
 	public:

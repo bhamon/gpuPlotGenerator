@@ -7,198 +7,47 @@
 	Based on the code of the official miner and dcct's plotgen.
 */
 
-#include <stdexcept>
+#include <cstdlib>
 #include <sstream>
-#include <fstream>
-#include <streambuf>
+#include <vector>
+#include <algorithm>
+#include <stdexcept>
 
-#include "OpenclError.h"
+#include "util.h"
 #include "GenerationContext.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
 
-GenerationContext::GenerationContext(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<OpenclDevice>& p_device) throw (std::exception)
-: m_config(p_config), m_device(p_device), m_context(0), m_commandQueue(0), m_buffer(0), m_program(0), m_kernels{0, 0, 0} {
-	cl_int error;
+GenerationContext::GenerationContext(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<PlotsFile>& p_plotsFile)
+: m_config(p_config), m_plotsFile(p_plotsFile), m_noncesDistributed(0), m_noncesWritten(0), m_available(true) {
+}
 
-	m_context = clCreateContext(0, 1, &m_device->getHandle(), NULL, NULL, &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL context");
-	}
-
-	m_commandQueue = clCreateCommandQueue(m_context, m_device->getHandle(), 0, &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL command queue");
-	}
-
-	m_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sizeof(unsigned char) * m_config->getGlobalWorkSize() * GEN_SIZE, 0, &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL GPU buffer");
-	}
-
-	std::string source(loadSource(KERNEL_PATH + "/nonce.cl"));
-	const char* sources[] = {source.c_str()};
-	std::size_t sourcesLength[] = {source.length()};
-	m_program = clCreateProgramWithSource(m_context, 1, sources, sourcesLength, &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL program");
-	}
-
-	std::string includePath("-I " + KERNEL_PATH);
-	error = clBuildProgram(m_program, 1, &m_device->getHandle(), includePath.c_str(), 0, 0);
-	if(error != CL_SUCCESS) {
-		std::size_t logSize;
-		cl_int subError = clGetProgramBuildInfo(m_program, m_device->getHandle(), CL_PROGRAM_BUILD_LOG, 0, 0, &logSize);
-		if(subError != CL_SUCCESS) {
-			throw OpenclError(subError, "Unable to retrieve the OpenCL build info size");
-		}
-
-		char* log = new char[logSize];
-		subError = clGetProgramBuildInfo(m_program, m_device->getHandle(), CL_PROGRAM_BUILD_LOG, logSize, (void*)log, 0);
-		if(subError != CL_SUCCESS) {
-			delete[] log;
-			throw OpenclError(subError, "Unable to retrieve the OpenCL build info");
-		}
-
-		std::ostringstream message;
-		message << "Unable to build the OpenCL program" << std::endl;
-		message << log;
-
-		delete[] log;
-
-		throw OpenclError(error, message.str());
-	}
-
-	m_kernels[0] = clCreateKernel(m_program, "nonce_step1", &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL step1 kernel");
-	}
-
-	error = clSetKernelArg(m_kernels[0], 0, sizeof(cl_mem), (void*)&m_buffer);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to set the OpenCL step1 kernel arguments");
-	}
-
-	m_kernels[1] = clCreateKernel(m_program, "nonce_step2", &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL step2 kernel");
-	}
-
-	error = clSetKernelArg(m_kernels[1], 0, sizeof(cl_mem), (void*)&m_buffer);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to set the OpenCL step2 kernel arguments");
-	}
-
-	m_kernels[2] = clCreateKernel(m_program, "nonce_step3", &error);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to create the OpenCL step3 kernel");
-	}
-
-	error = clSetKernelArg(m_kernels[2], 0, sizeof(cl_mem), (void*)&m_buffer);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to set the OpenCL step3 kernel arguments");
-	}
+GenerationContext::GenerationContext(const GenerationContext& p_other)
+: m_config(p_other.m_config), m_plotsFile(p_other.m_plotsFile), m_noncesDistributed(p_other.m_noncesDistributed), m_noncesWritten(p_other.m_noncesWritten), m_available(p_other.m_available) {
 }
 
 GenerationContext::~GenerationContext() throw () {
-	if(m_kernels[2]) { clReleaseKernel(m_kernels[2]); }
-	if(m_kernels[1]) { clReleaseKernel(m_kernels[1]); }
-	if(m_kernels[0]) { clReleaseKernel(m_kernels[0]); }
-	if(m_program) { clReleaseProgram(m_program); }
-	if(m_buffer) { clReleaseMemObject(m_buffer); }
-	if(m_commandQueue) { clReleaseCommandQueue(m_commandQueue); }
-	if(m_context) { clReleaseContext(m_context); }
 }
 
-void GenerationContext::computePlots(unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_workSize) throw (std::exception) {
-	if(p_workSize > m_config->getGlobalWorkSize()) {
-		throw std::runtime_error("Global work size too low for the requested work size");
-	}
+GenerationContext& GenerationContext::operator=(const GenerationContext& p_other) {
+	m_config = p_other.m_config;
+	m_plotsFile = p_other.m_plotsFile;
+	m_noncesDistributed = p_other.m_noncesDistributed;
+	m_noncesWritten = p_other.m_noncesWritten;
+	m_available = p_other.m_available;
 
-	cl_int error;
-	std::size_t globalWorkSize = m_config->getGlobalWorkSize();
-	std::size_t localWorkSize = m_config->getLocalWorkSize();
-
-	error = clSetKernelArg(m_kernels[0], 1, sizeof(unsigned int), (void*)&p_workSize);
-	error |= clSetKernelArg(m_kernels[0], 2, sizeof(unsigned long long), (void*)&p_address);
-	error |= clSetKernelArg(m_kernels[0], 3, sizeof(unsigned long long), (void*)&p_startNonce);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to set the OpenCL step1 kernel arguments");
-	}
-
-	error = clEnqueueNDRangeKernel(m_commandQueue, m_kernels[0], 1, 0, &globalWorkSize, &localWorkSize, 0, 0, 0);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Error in step1 kernel launch");
-	}
-
-	unsigned int hashesNumber = m_config->getHashesNumber();
-	unsigned int hashesSize = hashesNumber * HASH_SIZE;
-	for(unsigned int i = 0 ; i < PLOT_SIZE ; i += hashesSize) {
-		unsigned int hashesOffset = PLOT_SIZE - i;
-
-		error = clSetKernelArg(m_kernels[1], 1, sizeof(unsigned int), (void*)&p_workSize);
-		error |= clSetKernelArg(m_kernels[1], 2, sizeof(unsigned long long), (void*)&p_startNonce);
-		error |= clSetKernelArg(m_kernels[1], 3, sizeof(unsigned int), (void*)&hashesOffset);
-		error |= clSetKernelArg(m_kernels[1], 4, sizeof(unsigned int), (void*)&hashesNumber);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Unable to set the OpenCL step2 kernel arguments");
-		}
-
-		error = clEnqueueNDRangeKernel(m_commandQueue, m_kernels[1], 1, 0, &globalWorkSize, &localWorkSize, 0, 0, 0);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Error in step2 kernel launch");
-		}
-
-		error = clFinish(m_commandQueue);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Error in step2 kernel finish");
-		}
-	}
-
-	error = clSetKernelArg(m_kernels[2], 1, sizeof(unsigned int), (void*)&p_workSize);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Unable to set the OpenCL step3 kernel arguments");
-	}
-
-	error = clEnqueueNDRangeKernel(m_commandQueue, m_kernels[2], 1, 0, &globalWorkSize, &localWorkSize, 0, 0, 0);
-	if(error != CL_SUCCESS) {
-		throw OpenclError(error, "Error in step3 kernel launch");
-	}
+	return *this;
 }
 
-void GenerationContext::readPlots(unsigned char* p_buffer, std::size_t p_offset, unsigned int p_size) throw (std::exception) {
-	if(p_offset >= m_config->getGlobalWorkSize()) {
-		throw std::runtime_error("Offset out of GPU buffer bounds");
-	} else if(p_offset + p_size > m_config->getGlobalWorkSize()) {
-		throw std::runtime_error("Size out of GPU buffer bounds");
-	}
-
-	std::size_t offsetGpu = p_offset * GEN_SIZE;
-	std::size_t offsetCpu = 0;
-	for(unsigned int i = 0 ; i < p_size ; ++i, offsetGpu += GEN_SIZE, offsetCpu += PLOT_SIZE) {
-		int error = clEnqueueReadBuffer(m_commandQueue, m_buffer, CL_TRUE, sizeof(unsigned char) * offsetGpu, sizeof(unsigned char) * PLOT_SIZE, p_buffer + offsetCpu, 0, 0, 0);
-		if(error != CL_SUCCESS) {
-			throw OpenclError(error, "Error in synchronous read");
-		}
-	}
+unsigned int GenerationContext::requestWorkSize(unsigned int p_maxSize) {
+	unsigned int workSize = std::min(p_maxSize, m_config->getNoncesNumber() - m_noncesDistributed);
+	m_noncesDistributed += workSize;
+	return workSize;
 }
 
-std::string GenerationContext::loadSource(const std::string& p_file) const throw (std::exception) {
-	std::ifstream stream(p_file, std::ios::in);
-	if(!stream) {
-		throw std::runtime_error("Unable to open the source file");
-	}
-
-	std::string str;
-
-	stream.seekg(0, std::ios::end);
-	str.reserve(stream.tellg());
-	stream.seekg(0, std::ios::beg);
-
-	str.assign(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
-
-	return str;
+void GenerationContext::appendWorkSize(unsigned int p_workSize) {
+	m_noncesWritten += p_workSize;
 }
 
 }}

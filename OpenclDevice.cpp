@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <streambuf>
+#include <memory>
 
 #include "constants.h"
 #include "OpenclDevice.h"
@@ -95,17 +96,13 @@ std::vector<std::size_t> OpenclDevice::getMaxWorkItemSizes() const throw (std::e
 		throw OpenclError(error, "Unable to retrieve device max work item dimensions");
 	}
 
-	std::size_t* maxWorkItemSizes = new std::size_t[maxWorkItemDimensions];
-	error = clGetDeviceInfo(m_handle, CL_DEVICE_MAX_WORK_ITEM_SIZES , sizeof(std::size_t) * maxWorkItemDimensions, (void*)maxWorkItemSizes, 0);
+	std::unique_ptr<std::size_t[]> maxWorkItemSizes(new std::size_t[maxWorkItemDimensions]);
+	error = clGetDeviceInfo(m_handle, CL_DEVICE_MAX_WORK_ITEM_SIZES , sizeof(std::size_t) * maxWorkItemDimensions, (void*)maxWorkItemSizes.get(), 0);
 	if(error != CL_SUCCESS) {
-		delete[] maxWorkItemSizes;
 		throw OpenclError(error, "Unable to retrieve device max work item sizes");
 	}
 
-	std::vector<std::size_t> list(maxWorkItemSizes, maxWorkItemSizes + maxWorkItemDimensions);
-	delete[] maxWorkItemSizes;
-
-	return list;
+	return std::vector<std::size_t>(maxWorkItemSizes.get(), maxWorkItemSizes.get() + maxWorkItemDimensions);
 }
 
 std::string OpenclDevice::getInfoString(const cl_platform_info& p_paramName) const throw (std::exception) {
@@ -116,17 +113,13 @@ std::string OpenclDevice::getInfoString(const cl_platform_info& p_paramName) con
 		throw OpenclError(error, "Unable to retrieve device info size");
 	}
 
-	char* buffer = new char[size];
-	error = clGetDeviceInfo(m_handle, p_paramName, size, (void*)buffer, 0);
+	std::unique_ptr<char[]> buffer(new char[size]);
+	error = clGetDeviceInfo(m_handle, p_paramName, size, (void*)buffer.get(), 0);
 	if(error != CL_SUCCESS) {
-		delete[] buffer;
 		throw OpenclError(error, "Unable to retrieve device info value");
 	}
 
-	std::string value(buffer);
-	delete[] buffer;
-
-	return value;
+	return std::string(buffer.get());
 }
 
 unsigned int OpenclDevice::getInfoUint(const cl_platform_info& p_paramName) const throw (std::exception) {
@@ -169,18 +162,15 @@ std::vector<std::shared_ptr<OpenclDevice>> OpenclDevice::list(const std::shared_
 		throw OpenclError(error, "Unable to retrieve the OpenCL devices number");
 	}
 
-	cl_device_id* devices = new cl_device_id[devicesNumber];
-	error = clGetDeviceIDs(p_platform->getHandle(), CL_DEVICE_TYPE_ALL, devicesNumber, devices, 0);
+	std::unique_ptr<cl_device_id[]> devices(new cl_device_id[devicesNumber]);
+	error = clGetDeviceIDs(p_platform->getHandle(), CL_DEVICE_TYPE_ALL, devicesNumber, devices.get(), 0);
 	if(error != CL_SUCCESS) {
-		delete[] devices;
 		throw OpenclError(error, "Unable to retrieve the OpenCL devices");
 	}
 
 	for(cl_uint i = 0 ; i < devicesNumber ; ++i) {
 		list.push_back(std::shared_ptr<OpenclDevice>(new OpenclDevice(devices[i])));
 	}
-
-	delete[] devices;
 
 	return list;
 }

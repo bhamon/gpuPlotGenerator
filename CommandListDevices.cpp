@@ -43,8 +43,6 @@ int CommandListDevices::execute(const std::vector<std::string>& p_args) {
 		return -1;
 	}
 
-	int returnCode = 0;
-
 	try {
 		std::size_t platformId = std::atol(p_args[0].c_str());
 
@@ -81,14 +79,14 @@ int CommandListDevices::execute(const std::vector<std::string>& p_args) {
 	} catch(const OpenclError& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	}
 
-	return returnCode;
+	return 0;
 }
 
 }}
