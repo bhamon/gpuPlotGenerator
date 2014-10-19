@@ -31,6 +31,7 @@ class PlotsFile {
 		void seek(std::streamoff p_offset);
 		void read(unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
 		void write(const unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
+		void flush() throw (std::exception);
 };
 
 }}

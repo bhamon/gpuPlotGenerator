@@ -11,9 +11,12 @@
 #define CRYO_GPU_PLOT_GENERATOR_GENERATION_CONTEXT_H
 
 #include <memory>
+#include <list>
 
 #include "GenerationConfig.h"
 #include "PlotsFile.h"
+#include "GenerationWork.h"
+#include "GenerationDevice.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -24,7 +27,7 @@ class GenerationContext {
 		std::shared_ptr<PlotsFile> m_plotsFile;
 		unsigned int m_noncesDistributed;
 		unsigned int m_noncesWritten;
-		bool m_available;
+		std::list<std::shared_ptr<GenerationWork>> m_pendingWorks;
 
 	public:
 		GenerationContext(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<PlotsFile>& p_plotsFile);
@@ -38,15 +41,13 @@ class GenerationContext {
 		inline const std::shared_ptr<PlotsFile>& getPlotsFile() const;
 		inline unsigned int getNoncesDistributed() const;
 		inline unsigned int getNoncesWritten() const;
-		inline bool isAvailable() const;
-		inline void setAvailable(bool p_available);
 
-		inline unsigned long long getCurrentDistributedNonce() const;
-		inline unsigned long long getCurrentWrittenNonce() const;
 		inline unsigned int getPendingNonces() const;
+		inline bool hasPendingWork() const;
+		inline const std::shared_ptr<GenerationWork>& getLastPendingWork() const;
 
-		unsigned int requestWorkSize(unsigned int p_maxSize);
-		void appendWorkSize(unsigned int p_workSize);
+		const std::shared_ptr<GenerationWork>& requestWork(const std::shared_ptr<GenerationDevice>& p_device) throw (std::exception);
+		void popLastPendingWork() throw (std::exception);
 };
 
 }}
@@ -72,24 +73,16 @@ inline unsigned int GenerationContext::getNoncesWritten() const {
 	return m_noncesWritten;
 }
 
-inline bool GenerationContext::isAvailable() const {
-	return m_available;
-}
-
-inline void GenerationContext::setAvailable(bool p_available) {
-	m_available = p_available;
-}
-
-inline unsigned long long GenerationContext::getCurrentDistributedNonce() const {
-	return m_config->getStartNonce() + m_noncesDistributed;
-}
-
-inline unsigned long long GenerationContext::getCurrentWrittenNonce() const {
-	return m_config->getStartNonce() + m_noncesWritten;
-}
-
 inline unsigned int GenerationContext::getPendingNonces() const {
 	return m_noncesDistributed - m_noncesWritten;
+}
+
+inline bool GenerationContext::hasPendingWork() const {
+	return m_pendingWorks.size() > 0;
+}
+
+inline const std::shared_ptr<GenerationWork>& GenerationContext::getLastPendingWork() const {
+	return m_pendingWorks.back();
 }
 
 }}

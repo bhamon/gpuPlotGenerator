@@ -64,4 +64,11 @@ void PlotsFile::write(const unsigned char* p_buffer, std::streamsize p_size) thr
 	}
 }
 
+void PlotsFile::flush() throw (std::exception) {
+	m_stream.flush();
+	if(!m_stream) {
+		throw std::runtime_error("Error while flushing plots file");
+	}
+}
+
 }}
