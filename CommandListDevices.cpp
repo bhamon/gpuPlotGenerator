@@ -9,6 +9,8 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <memory>
+#include <exception>
 
 #include "util.h"
 #include "OpenclError.h"

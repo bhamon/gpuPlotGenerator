@@ -12,6 +12,7 @@
 #include <fstream>
 #include <streambuf>
 
+#include "constants.h"
 #include "OpenclError.h"
 #include "GenerationDevice.h"
 

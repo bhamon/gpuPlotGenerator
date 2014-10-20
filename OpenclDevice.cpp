@@ -7,12 +7,6 @@
 	Based on the code of the official miner and dcct's plotgen.
 */
 
-#include <fstream>
-#include <sstream>
-#include <streambuf>
-#include <memory>
-
-#include "constants.h"
 #include "OpenclDevice.h"
 #include "OpenclError.h"
 

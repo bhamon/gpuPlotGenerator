@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "constants.h"
 #include "util.h"
 #include "GenerationConfig.h"
 

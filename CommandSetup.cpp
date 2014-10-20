@@ -17,7 +17,6 @@
 #include "OpenclPlatform.h"
 #include "OpenclDevice.h"
 #include "DeviceConfig.h"
-#include "OpenclError.h"
 #include "CommandSetup.h"
 
 namespace cryo {

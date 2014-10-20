@@ -217,12 +217,6 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 							generationContext = *it;
 							generationWork = generationContext->requestWork(p_generationDevice);
 							p_generationDevice->setAvailable(false);
-// DEBUG
-// std::cout << std::string(console.str().length(), '\b');
-// std::cout << std::string(console.str().length(), ' ');
-// std::cout << std::string(console.str().length(), '\b');
-// std::cout << "COMPUTE THREAD :: workSize=" << generationWork->getWorkSize() << std::endl;
-// DEBUG
 						}
 
 						try {

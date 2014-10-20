@@ -12,10 +12,7 @@
 
 #include <string>
 #include <vector>
-#include <memory>
 #include <exception>
-
-#include "OpenclDevice.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {

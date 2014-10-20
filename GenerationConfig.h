@@ -50,8 +50,6 @@ class GenerationConfig {
 
 }}
 
-#include "constants.h"
-
 namespace cryo {
 namespace gpuPlotGenerator {
 

@@ -7,8 +7,6 @@
 	Based on the code of the official miner and dcct's plotgen.
 */
 
-#include <memory>
-
 #include "OpenclError.h"
 #include "OpenclPlatform.h"
 

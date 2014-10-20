@@ -11,10 +11,10 @@
 #define CRYO_GPU_PLOT_GENERATOR_GENERATION_DEVICE_H
 
 #include <memory>
+#include <string>
 #include <exception>
 #include <CL/cl.h>
 
-#include "constants.h"
 #include "DeviceConfig.h"
 #include "OpenclDevice.h"
 

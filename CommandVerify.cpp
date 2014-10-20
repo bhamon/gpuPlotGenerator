@@ -100,11 +100,13 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 
 		for(unsigned int i = 0 ; i < commonNb ; ++i) {
 			std::cout << std::string(console.str().length(), '\b');
+			std::cout << std::string(console.str().length(), ' ');
+			std::cout << std::string(console.str().length(), '\b');
 			console.str("");
 
 			double percent = 100.0 * (double)i / (double)commonNb;
 			console << percent << "% (" << i << "/" << commonNb << " nonces)";
-			console << "...          ";
+			console << "...";
 			std::cout << console.str();
 
 			std::streamoff generatedNonceStaggerOffset = generatedConfig.getNonceStaggerOffset(commonStart + i);
@@ -127,8 +129,10 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 		}
 
 		std::cout << std::string(console.str().length(), '\b');
-		std::cout << "100% (" << commonNb << "/" << commonNb << " nonces)";
-		std::cout << "                    " << std::endl << std::endl;
+		std::cout << std::string(console.str().length(), ' ');
+		std::cout << std::string(console.str().length(), '\b');
+
+		std::cout << "100% (" << commonNb << "/" << commonNb << " nonces)" << std::endl << std::endl;
 		std::cout << "[OK] The generated plots file has been successfully verified against the provided reference" << std::endl;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
