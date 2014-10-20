@@ -134,11 +134,10 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 			std::shared_ptr<PlotsFile> plotsFile(new PlotsFile(config->getFullPath(), true));
 
-			unsigned long long noncesSize = config->getNoncesSize();
-			maxBufferStaggerSize = std::max(maxBufferStaggerSize, noncesSize);
+			maxBufferStaggerSize = std::max(maxBufferStaggerSize, (unsigned long long)config->getStaggerSize() * PLOT_SIZE);
 
 			std::cout << "    [" << (i - 1) << "] Path: " << config->getFullPath() << std::endl;
-			std::cout << "    [" << (i - 1) << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(noncesSize >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
+			std::cout << "    [" << (i - 1) << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(config->getNoncesSize() >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
 
 			generationContexts.push_back(std::shared_ptr<GenerationContext>(new GenerationContext(config, plotsFile)));
 		}
