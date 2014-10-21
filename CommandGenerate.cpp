@@ -16,10 +16,6 @@
 #include <algorithm>
 #include <list>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
-#include <tuple>
-#include <memory>
 
 #include "constants.h"
 #include "util.h"
@@ -30,7 +26,10 @@
 #include "GenerationConfig.h"
 #include "PlotsFile.h"
 #include "GenerationContext.h"
+#include "GenerationWork.h"
 #include "CommandGenerate.h"
+#include "GenerationWriterBuffer.h"
+#include "GenerationWriterDirect.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -52,8 +51,7 @@ void CommandGenerate::help() const {
 	std::cout << "Parameters:" << std::endl;
 	std::cout << "    - buffersNb: Number of rotating buffers to use to write the output files." << std::endl;
 	std::cout << "                 Specify [auto] to create as many buffers as output files." << std::endl;
-//	std::cout << "                 Specify [none] to write nonces directly to files." << std::endl;
-// TODO
+	std::cout << "                 Specify [none] to write nonces directly to files." << std::endl;
 	std::cout << "    - plotsFiles: A space-sparated list of output files to generate." << std::endl;
 	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>] with:" << std::endl;
 	std::cout << "                      - address: Burst numerical address." << std::endl;
@@ -70,12 +68,18 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 	try {
 		std::size_t buffersNb;
+		bool direct = false;
 		if(p_args[0] == "auto") {
 			buffersNb = p_args.size() - 1;
-//		} else if(p_args[0] == "none") {
-// TODO
+		} else if(p_args[0] == "none") {
+			buffersNb = p_args.size() - 1;
+			direct = true;
 		} else {
 			buffersNb = std::atol(p_args[0].c_str());
+		}
+
+		if(buffersNb == 0 || buffersNb > p_args.size() - 1) {
+			throw std::runtime_error("Parameter <buffersNb> must be between 1 and the number of output plots files");
 		}
 
 		std::vector<unsigned long long> timeUnits {60, 60, 24, 7, 52};
@@ -142,224 +146,87 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 			generationContexts.push_back(std::shared_ptr<GenerationContext>(new GenerationContext(config, plotsFile)));
 		}
 
+		std::cout << "Initializing generation writers..." << std::endl;
+		std::list<std::shared_ptr<GenerationWriter>> generationWriters;
+		for(std::size_t i = 0 ; i < buffersNb ; ++i) {
+			if(direct) {
+				generationWriters.push_back(std::shared_ptr<GenerationWriter>(new GenerationWriterDirect(maxBufferDeviceSize)));
+			} else {
+				generationWriters.push_back(std::shared_ptr<GenerationWriter>(new GenerationWriterBuffer(maxBufferDeviceSize, maxBufferStaggerSize)));
+			}
+		}
+
 		std::cout << "----" << std::endl;
 
-		unsigned long long cpuMemory = (maxBufferDeviceSize + maxBufferStaggerSize + PLOT_SIZE) * buffersNb;
+		unsigned long long cpuMemory = 0;
+		for(const std::shared_ptr<GenerationWriter>& generationWriter : generationWriters) {
+			cpuMemory += generationWriter->getMemorySize();
+		}
+
+		unsigned long long noncesNumber = 0;
+		for(const std::shared_ptr<GenerationContext>& generationContext : generationContexts) {
+			noncesNumber += generationContext->getConfig()->getNoncesNumber();
+		}
 
 		std::cout << "Devices number: " << generationDevices.size() << std::endl;
 		std::cout << "Plots files number: " << generationContexts.size() << std::endl;
+		std::cout << "Total nonces number: " << noncesNumber << std::endl;
 		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory >> 20, sizeUnits, sizeLabels) << std::endl;
 		std::cout << "----" << std::endl;
+
 
 		std::cout << "Generating nonces..." << std::endl;
 		std::exception_ptr error;
 		std::mutex mutex;
 		std::condition_variable barrier;
+		std::vector<std::shared_ptr<std::thread>> threads;
+
+		{
+			std::unique_lock<std::mutex> lock(mutex);
+
+			for(std::shared_ptr<GenerationDevice>& generationDevice : generationDevices) {
+				std::shared_ptr<std::thread> thread(
+					new std::thread([&](std::shared_ptr<GenerationDevice> p_generationDevice) {
+						try {
+							computePlots(error, mutex, barrier, generationContexts, p_generationDevice);
+						} catch(const std::exception& ex) {
+							std::unique_lock<std::mutex> errorLock(mutex);
+							error = std::current_exception();
+							barrier.notify_all();
+						}
+					}, generationDevice),
+					[](std::thread* p_thread){
+						p_thread->join();
+						delete p_thread;
+					}
+				);
+
+				threads.push_back(thread);
+			}
+
+			for(std::shared_ptr<GenerationWriter>& generationWriter : generationWriters) {
+				std::shared_ptr<std::thread> thread(
+					new std::thread([&](std::shared_ptr<GenerationWriter> p_generationWriter) {
+						try {
+							writeNonces(error, mutex, barrier, generationContexts, p_generationWriter);
+						} catch(const std::exception& ex) {
+							std::unique_lock<std::mutex> errorLock(mutex);
+							error = std::current_exception();
+							barrier.notify_all();
+						}
+					}, generationWriter),
+					[](std::thread* p_thread){
+						p_thread->join();
+						delete p_thread;
+					}
+				);
+
+				threads.push_back(thread);
+			}
+		}
+
 		std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 		std::ostringstream console;
-
-// TODO: use an unique_lock instead
-		mutex.lock();
-
-		std::vector<std::shared_ptr<std::thread>> generationThreads;
-		for(std::shared_ptr<GenerationDevice>& generationDevice : generationDevices) {
-			std::shared_ptr<std::thread> thread(
-				new std::thread([&](std::shared_ptr<GenerationDevice> p_generationDevice) {
-					while(true) {
-						std::shared_ptr<GenerationContext> generationContext;
-						std::shared_ptr<GenerationWork> generationWork;
-
-						{
-							std::list<std::shared_ptr<GenerationContext>>::iterator it;
-							std::unique_lock<std::mutex> lock(mutex);
-							barrier.wait(lock, [&](){
-								if(error) {
-									return true;
-								}
-
-								it = std::find_if(
-									generationContexts.begin(),
-									generationContexts.end(),
-									[](std::shared_ptr<GenerationContext>& p_generationContext) {
-										return p_generationContext->getNoncesDistributed() < p_generationContext->getConfig()->getNoncesNumber();
-									}
-								);
-
-								if(it == generationContexts.end()) {
-									return true;
-								}
-
-								return p_generationDevice->isAvailable();
-							});
-
-							if(error || it == generationContexts.end()) {
-								break;
-							}
-
-							it = std::min_element(
-								generationContexts.begin(),
-								generationContexts.end(),
-								[](std::shared_ptr<GenerationContext>& p_c1, std::shared_ptr<GenerationContext>& p_c2) {
-									if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
-										return false;
-									} else if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
-										return true;
-									}
-
-									if(p_c1->getPendingNonces() == p_c2->getPendingNonces()) {
-										return p_c1->getNoncesDistributed() < p_c2->getNoncesDistributed();
-									}
-
-									return p_c1->getPendingNonces() < p_c2->getPendingNonces();
-								}
-							);
-
-							generationContext = *it;
-							generationWork = generationContext->requestWork(p_generationDevice);
-							p_generationDevice->setAvailable(false);
-						}
-
-						try {
-							p_generationDevice->computePlots(
-								generationContext->getConfig()->getAddress(),
-								generationWork->getStartNonce(),
-								generationWork->getWorkSize()
-							);
-
-							std::unique_lock<std::mutex> lock(mutex);
-							generationWork->setStatus(GenerationStatus::Generated);
-							barrier.notify_all();
-						} catch(const std::exception& ex) {
-							std::unique_lock<std::mutex> lock(mutex);
-							error = std::current_exception();
-							barrier.notify_all();
-
-							break;
-						}
-					}
-				}, generationDevice),
-				[](std::thread* p_thread){
-					p_thread->join();
-					delete p_thread;
-				}
-			);
-
-			generationThreads.push_back(thread);
-		}
-
-		std::vector<std::shared_ptr<std::thread>> writingThreads;
-		for(std::size_t i = 0 ; i < buffersNb ; ++i) {
-			std::shared_ptr<std::thread> thread(
-				new std::thread([&]() {
-					std::unique_ptr<unsigned char[]> bufferPlots(new unsigned char[PLOT_SIZE]);
-					std::unique_ptr<unsigned char[]> bufferDevice(new unsigned char[maxBufferDeviceSize]);
-					std::unique_ptr<unsigned char[]> bufferStagger(new unsigned char[maxBufferStaggerSize]);
-
-					while(true) {
-						std::shared_ptr<GenerationContext> generationContext;
-						std::shared_ptr<GenerationWork> generationWork;
-
-						{
-							std::list<std::shared_ptr<GenerationContext>>::iterator it;
-							std::unique_lock<std::mutex> lock(mutex);
-							barrier.wait(lock, [&](){
-								if(error) {
-									return true;
-								}
-
-								it = std::find_if(
-									generationContexts.begin(),
-									generationContexts.end(),
-									[](std::shared_ptr<GenerationContext>& p_generationContext) {
-										return p_generationContext->getNoncesWritten() < p_generationContext->getConfig()->getNoncesNumber();
-									}
-								);
-
-								if(it == generationContexts.end()) {
-									return true;
-								}
-
-								it = std::find_if(
-									generationContexts.begin(),
-									generationContexts.end(),
-									[](std::shared_ptr<GenerationContext>& p_generationContext) {
-										return
-											p_generationContext->hasPendingWork() &&
-											p_generationContext->getLastPendingWork()->getStatus() == GenerationStatus::Generated;
-									}
-								);
-
-								return it != generationContexts.end();
-							});
-
-							if(error || it == generationContexts.end()) {
-								break;
-							}
-
-							generationContext = *it;
-							generationWork = generationContext->getLastPendingWork();
-							generationWork->setStatus(GenerationStatus::Writing);
-						}
-
-						try {
-							std::size_t bufferDeviceOffset = 0;
-							for(unsigned int i = 0, end = generationWork->getWorkSize() ; i < end ; ++i, bufferDeviceOffset += PLOT_SIZE) {
-								generationWork->getDevice()->readPlots(bufferPlots.get(), i, 1);
-								std::copy(bufferPlots.get(), bufferPlots.get() + PLOT_SIZE, bufferDevice.get() + bufferDeviceOffset);
-							}
-
-							{
-								std::unique_lock<std::mutex> lock(mutex);
-								generationWork->getDevice()->setAvailable(true);
-								barrier.notify_all();
-							}
-
-							unsigned int staggerSize = generationContext->getConfig()->getStaggerSize();
-							bufferDeviceOffset = 0;
-							for(unsigned int i = 0, end = generationWork->getWorkSize() ; i < end ; ++i, bufferDeviceOffset += PLOT_SIZE) {
-								unsigned int staggerNonce = (generationContext->getNoncesWritten() + i) % staggerSize;
-								for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-									std::copy_n(bufferDevice.get() + bufferDeviceOffset + j, SCOOP_SIZE, bufferStagger.get() + (std::size_t)staggerNonce * SCOOP_SIZE + (std::size_t)j * staggerSize);
-								}
-
-								if(staggerNonce == staggerSize - 1) {
-									generationContext->getPlotsFile()->write(bufferStagger.get(), (std::streamsize)PLOT_SIZE * staggerSize);
-									generationContext->getPlotsFile()->flush();
-								}
-							}
-
-							{
-								std::unique_lock<std::mutex> lock(mutex);
-
-								if(generationContext->getNoncesWritten() == generationContext->getConfig()->getNoncesNumber()) {
-// TODO: std::cout?
-								}
-
-								generationWork->setStatus(GenerationStatus::Written);
-								generationContext->popLastPendingWork();
-								barrier.notify_all();
-							}
-						} catch(const std::exception& ex) {
-							std::unique_lock<std::mutex> lock(mutex);
-							error = std::current_exception();
-							barrier.notify_all();
-
-							break;
-						}
-					}
-				}),
-				[](std::thread* p_thread){
-					p_thread->join();
-					delete p_thread;
-				}
-			);
-
-			writingThreads.push_back(thread);
-		}
-
-// TODO: use unique_lock instead
-		mutex.unlock();
-
 		while(true) {
 			std::unique_lock<std::mutex> lock(mutex);
 
@@ -380,10 +247,8 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 			}
 
 			unsigned long long noncesWritten = 0;
-			unsigned long long noncesNumber = 0;
 			for(const std::shared_ptr<GenerationContext>& generationContext : generationContexts) {
 				noncesWritten += generationContext->getNoncesWritten();
-				noncesNumber += generationContext->getConfig()->getNoncesNumber();
 			}
 
 			std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
@@ -412,7 +277,10 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 		std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
 		std::chrono::seconds interval = std::chrono::duration_cast<std::chrono::seconds>(currentTime - startTime);
-		std::cout << "100% " << cryo::util::formatValue((unsigned long long)interval.count(), timeUnits, timeLabels) << std::endl;
+		double speed = (double)noncesNumber * 60.0 / std::max((double)interval.count(), 1.0);
+		std::cout << "100% (" << noncesNumber << " nonces)";
+		std::cout << ", " << std::fixed << std::setprecision(2) << speed << " nonces/minutes";
+		std::cout << ", " << cryo::util::formatValue((unsigned long long)interval.count(), timeUnits, timeLabels) << std::endl;
 	} catch(const OpenclError& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
@@ -424,6 +292,158 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 	}
 
 	return 0;
+}
+
+void computePlots(
+	std::exception_ptr& p_error,
+	std::mutex& p_mutex,
+	std::condition_variable& p_barrier,
+	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
+	std::shared_ptr<GenerationDevice>& p_generationDevice
+) throw (std::exception) {
+	while(true) {
+		std::shared_ptr<GenerationContext> generationContext;
+		std::shared_ptr<GenerationWork> generationWork;
+
+		{
+			std::list<std::shared_ptr<GenerationContext>>::iterator it;
+			std::unique_lock<std::mutex> lock(p_mutex);
+			p_barrier.wait(lock, [&](){
+				if(p_error) {
+					return true;
+				}
+
+				it = std::find_if(
+					p_generationContexts.begin(),
+					p_generationContexts.end(),
+					[](std::shared_ptr<GenerationContext>& p_generationContext) {
+						return p_generationContext->getNoncesDistributed() < p_generationContext->getConfig()->getNoncesNumber();
+					}
+				);
+
+				if(it == p_generationContexts.end()) {
+					return true;
+				}
+
+				return p_generationDevice->isAvailable();
+			});
+
+			if(p_error || it == p_generationContexts.end()) {
+				break;
+			}
+
+			it = std::min_element(
+				p_generationContexts.begin(),
+				p_generationContexts.end(),
+				[](std::shared_ptr<GenerationContext>& p_c1, std::shared_ptr<GenerationContext>& p_c2) {
+					if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+						return false;
+					} else if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+						return true;
+					}
+
+					if(p_c1->getPendingNonces() == p_c2->getPendingNonces()) {
+						return p_c1->getNoncesDistributed() < p_c2->getNoncesDistributed();
+					}
+
+					return p_c1->getPendingNonces() < p_c2->getPendingNonces();
+				}
+			);
+
+			generationContext = *it;
+			generationWork = generationContext->requestWork(p_generationDevice);
+			p_generationDevice->setAvailable(false);
+		}
+
+		p_generationDevice->computePlots(
+			generationContext->getConfig()->getAddress(),
+			generationWork->getStartNonce(),
+			generationWork->getWorkSize()
+		);
+
+		{
+			std::unique_lock<std::mutex> lock(p_mutex);
+			generationWork->setStatus(GenerationStatus::Generated);
+			p_barrier.notify_all();
+		}
+	}
+}
+
+void writeNonces(
+	std::exception_ptr& p_error,
+	std::mutex& p_mutex,
+	std::condition_variable& p_barrier,
+	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
+	std::shared_ptr<GenerationWriter>& p_writer
+) throw (std::exception) {
+	while(true) {
+		std::shared_ptr<GenerationContext> generationContext;
+		std::shared_ptr<GenerationWork> generationWork;
+
+		{
+			std::list<std::shared_ptr<GenerationContext>>::iterator it;
+			std::unique_lock<std::mutex> lock(p_mutex);
+			p_barrier.wait(lock, [&](){
+				if(p_error) {
+					return true;
+				}
+
+				it = std::find_if(
+					p_generationContexts.begin(),
+					p_generationContexts.end(),
+					[](std::shared_ptr<GenerationContext>& p_generationContext) {
+						return p_generationContext->getNoncesWritten() < p_generationContext->getConfig()->getNoncesNumber();
+					}
+				);
+
+				if(it == p_generationContexts.end()) {
+					return true;
+				}
+
+				it = std::find_if(
+					p_generationContexts.begin(),
+					p_generationContexts.end(),
+					[](std::shared_ptr<GenerationContext>& p_generationContext) {
+						return
+							p_generationContext->hasPendingWork() &&
+							p_generationContext->getLastPendingWork()->getStatus() == GenerationStatus::Generated;
+					}
+				);
+
+				return it != p_generationContexts.end();
+			});
+
+			if(p_error || it == p_generationContexts.end()) {
+				break;
+			}
+
+			generationContext = *it;
+			generationWork = generationContext->getLastPendingWork();
+			generationWork->setStatus(GenerationStatus::Writing);
+		}
+
+		p_writer->readPlots(generationContext, generationWork);
+
+		{
+			std::unique_lock<std::mutex> lock(p_mutex);
+			generationWork->getDevice()->setAvailable(true);
+			p_barrier.notify_all();
+		}
+
+		p_writer->writeNonces(generationContext, generationWork);
+
+		{
+			std::unique_lock<std::mutex> lock(p_mutex);
+
+			generationWork->setStatus(GenerationStatus::Written);
+			generationContext->popLastPendingWork();
+			p_barrier.notify_all();
+
+			if(generationContext->getNoncesWritten() == generationContext->getConfig()->getNoncesNumber()) {
+// TODO: std::cout?
+			}
+		}
+	}
 }
 
 }}

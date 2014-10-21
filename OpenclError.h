@@ -11,6 +11,7 @@
 #define CRYO_GPU_PLOT_GENERATOR_OPENCL_ERROR_H
 
 #include <string>
+#include <stdexcept>
 #include <CL/cl.h>
 
 namespace cryo {
