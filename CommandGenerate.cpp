@@ -51,7 +51,7 @@ void CommandGenerate::help() const {
 	std::cout << "Parameters:" << std::endl;
 	std::cout << "    - buffersNb: Number of rotating buffers to use to write the output files." << std::endl;
 	std::cout << "                 Specify [auto] to create as many buffers as output files." << std::endl;
-	std::cout << "                 Specify [none] to write nonces directly to files." << std::endl;
+	std::cout << "                 Specify [direct] to write nonces directly to files." << std::endl;
 	std::cout << "    - plotsFiles: A space-sparated list of output files to generate." << std::endl;
 	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>] with:" << std::endl;
 	std::cout << "                      - address: Burst numerical address." << std::endl;
@@ -71,7 +71,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		bool direct = false;
 		if(p_args[0] == "auto") {
 			buffersNb = p_args.size() - 1;
-		} else if(p_args[0] == "none") {
+		} else if(p_args[0] == "direct") {
 			buffersNb = p_args.size() - 1;
 			direct = true;
 		} else {
