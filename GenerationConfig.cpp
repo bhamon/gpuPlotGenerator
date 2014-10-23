@@ -100,10 +100,6 @@ void GenerationConfig::normalize() throw (std::exception) {
 		m_noncesNumber -= m_noncesNumber % m_staggerSize;
 		m_noncesNumber += m_staggerSize;
 	}
-
-	if(sizeof(std::size_t) == 4 && m_staggerSize > 16000) {
-		throw std::runtime_error("Stagger size value too high (32bits platform restriction)");
-	}
 }
 
 }}
