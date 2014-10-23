@@ -32,16 +32,8 @@ PlotsFile::~PlotsFile() throw () {
 	m_stream.close();
 }
 
-void PlotsFile::seek(std::streamoff p_offset) {
-	std::streamoff current = m_stream.tellg();
-
-	for(std::streamoff i = current ; i < p_offset ; i += IO_CAP) {
-		m_stream.seekg(std::min(p_offset - i, (std::streamoff)IO_CAP), std::ios::cur);
-	}
-
-	for(std::streamoff i = p_offset ; i < current ; i += IO_CAP) {
-		m_stream.seekg(-std::min(current - i, (std::streamoff)IO_CAP), std::ios::cur);
-	}
+void PlotsFile::seek(std::streamoff p_offset, std::ios::seekdir p_direction) {
+	m_stream.seekg(p_offset, p_direction);
 }
 
 void PlotsFile::read(unsigned char* p_buffer, std::streamsize p_size) throw (std::exception) {

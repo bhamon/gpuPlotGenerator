@@ -31,15 +31,13 @@ void GenerationWriterDirect::readPlots(std::shared_ptr<GenerationContext>&, std:
 
 void GenerationWriterDirect::writeNonces(std::shared_ptr<GenerationContext>& p_context, std::shared_ptr<GenerationWork>& p_work) throw (std::exception) {
 	unsigned long long startNonce = p_context->getConfig()->getStartNonce() + p_context->getNoncesWritten();
-	unsigned int staggerSize = p_context->getConfig()->getStaggerSize();
 	std::size_t bufferDeviceOffset = 0;
 	for(unsigned int i = 0, end = p_work->getWorkSize() ; i < end ; ++i) {
-		std::streamoff nonceStaggerOffset = p_context->getConfig()->getNonceStaggerOffset(startNonce + i);
-		std::streamoff nonceStaggerDecal = p_context->getConfig()->getNonceStaggerDecal(startNonce + i);
+		p_context->getPlotsFile()->seek((std::streamoff)p_context->getConfig()->getNonceStaggerOffset(startNonce + i) + p_context->getConfig()->getNonceStaggerDecal(startNonce + i), std::ios::beg);
 
 		for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE, bufferDeviceOffset += SCOOP_SIZE) {
-			p_context->getPlotsFile()->seek(nonceStaggerOffset + nonceStaggerDecal + (std::streamoff)j * staggerSize);
 			p_context->getPlotsFile()->write(m_bufferDevice + bufferDeviceOffset, SCOOP_SIZE);
+			p_context->getPlotsFile()->seek(((std::streamoff)p_context->getConfig()->getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
 		}
 
 		p_context->getPlotsFile()->flush();

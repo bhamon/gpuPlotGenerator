@@ -109,22 +109,19 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 			console << "...";
 			std::cout << console.str();
 
-			std::streamoff generatedNonceStaggerOffset = generatedConfig.getNonceStaggerOffset(commonStart + i);
-			std::streamoff generatedNonceStaggerDecal = generatedConfig.getNonceStaggerDecal(commonStart + i);
-
-			std::streamoff referenceNonceStaggerOffset = referenceConfig.getNonceStaggerOffset(commonStart + i);
-			std::streamoff referenceNonceStaggerDecal = referenceConfig.getNonceStaggerDecal(commonStart + i);
+			generated.seek((std::streamoff)generatedConfig.getNonceStaggerOffset(commonStart + i) + generatedConfig.getNonceStaggerDecal(commonStart + i), std::ios::beg);
+			reference.seek((std::streamoff)referenceConfig.getNonceStaggerOffset(commonStart + i) + referenceConfig.getNonceStaggerDecal(commonStart + i), std::ios::beg);
 
 			for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-				generated.seek(generatedNonceStaggerOffset + generatedNonceStaggerDecal + (std::streamoff)j * generatedConfig.getStaggerSize());
-				reference.seek(referenceNonceStaggerOffset + referenceNonceStaggerDecal + (std::streamoff)j * referenceConfig.getStaggerSize());
-
 				generated.read(generatedBuffer.get(), SCOOP_SIZE);
 				reference.read(referenceBuffer.get(), SCOOP_SIZE);
 
 				if(!std::equal(generatedBuffer.get(), generatedBuffer.get() + SCOOP_SIZE, referenceBuffer.get())) {
 					throw std::runtime_error("Common nonces doesn't match");
 				}
+
+				generated.seek(((std::streamoff)generatedConfig.getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
+				reference.seek(((std::streamoff)referenceConfig.getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
 			}
 		}
 

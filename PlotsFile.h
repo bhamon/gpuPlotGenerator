@@ -28,7 +28,7 @@ class PlotsFile {
 
 		PlotsFile& operator=(const PlotsFile& p_other) = delete;
 
-		void seek(std::streamoff p_offset);
+		void seek(std::streamoff p_offset, std::ios::seekdir p_direction);
 		void read(unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
 		void write(const unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
 		void flush() throw (std::exception);
