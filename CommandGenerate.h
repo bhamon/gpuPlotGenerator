@@ -12,8 +12,17 @@
 
 #include <string>
 #include <vector>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <condition_variable>
+#include <exception>
 
 #include "Command.h"
+#include "GenerationDevice.h"
+#include "GenerationContext.h"
+#include "GenerationWork.h"
+#include "GenerationWriter.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -27,6 +36,22 @@ class CommandGenerate : public cryo::gpuPlotGenerator::Command {
 		virtual void help() const;
 		virtual int execute(const std::vector<std::string>& p_args);
 };
+
+void computePlots(
+	std::exception_ptr& p_error,
+	std::mutex& p_mutex,
+	std::condition_variable& p_barrier,
+	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
+	std::shared_ptr<GenerationDevice>& p_generationDevice
+) throw (std::exception);
+
+void writeNonces(
+	std::exception_ptr& p_error,
+	std::mutex& p_mutex,
+	std::condition_variable& p_barrier,
+	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
+	std::shared_ptr<GenerationWriter>& p_writer
+) throw (std::exception);
 
 }}
 

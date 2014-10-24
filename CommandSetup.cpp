@@ -16,8 +16,7 @@
 #include "OpenclError.h"
 #include "OpenclPlatform.h"
 #include "OpenclDevice.h"
-#include "GenerationConfig.h"
-#include "OpenclError.h"
+#include "DeviceConfig.h"
 #include "CommandSetup.h"
 
 namespace cryo {
@@ -40,8 +39,6 @@ void CommandSetup::help() const {
 }
 
 int CommandSetup::execute(const std::vector<std::string>&) {
-	int returnCode = 0;
-
 	try {
 		std::cout << "Loading platforms..." << std::endl;
 		std::vector<std::shared_ptr<OpenclPlatform>> platforms(OpenclPlatform::list());
@@ -53,7 +50,12 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 		}
 
 		std::cout << "Loading devices configurations..." << std::endl;
-		std::vector<std::shared_ptr<GenerationConfig>> configs(GenerationConfig::loadFromFile(DEVICES_FILE));
+		std::vector<std::shared_ptr<DeviceConfig>> configs;
+		try {
+			configs = DeviceConfig::loadFromFile(DEVICES_FILE);
+		} catch(...) {
+			std::cout << "[WARNING] No config file found" << std::endl;
+		}
 
 		std::vector<unsigned long long> sizeUnits {1024, 1024};
 		std::vector<std::string> sizeLabels {"MB", "GB", "TB"};
@@ -84,7 +86,10 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 						std::size_t j = 0;
 						for(const std::shared_ptr<OpenclDevice>& device : devices[i]) {
 							std::cout << "    [" << j << "] " << device->getName() << " (" << device->getVersion() << ")" << std::endl;
+							++j;
 						}
+
+						++i;
 					}
 				}
 				break;
@@ -92,7 +97,7 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 					std::cout << "Number of configured devices: " << configs.size() << std::endl;
 
 					std::size_t i = 0;
-					for(const std::shared_ptr<GenerationConfig>& config : configs) {
+					for(const std::shared_ptr<DeviceConfig>& config : configs) {
 						std::cout << "----" << std::endl;
 						std::cout << "Index:             " << i++ << std::endl;
 						std::cout << "Platform:          " << config->getPlatform() << std::endl;
@@ -124,7 +129,7 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 					}
 
 					std::shared_ptr<OpenclDevice> device(devices[platformId][deviceId]);
-					std::shared_ptr<GenerationConfig> config(new GenerationConfig(
+					std::shared_ptr<DeviceConfig> config(new DeviceConfig(
 						platformId,
 						deviceId,
 						std::min(device->getGlobalMemorySize() / PLOT_SIZE, device->getMaxMemoryAllocationSize() / PLOT_SIZE),
@@ -170,7 +175,7 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 				}
 				break;
 				case 9:{
-					GenerationConfig::storeToFile(DEVICES_FILE, configs);
+					DeviceConfig::storeToFile(DEVICES_FILE, configs);
 					std::cout << "Config saved" << std::endl;
 				}
 				break;
@@ -184,14 +189,14 @@ int CommandSetup::execute(const std::vector<std::string>&) {
 	} catch(const OpenclError& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	}
 
-	return returnCode;
+	return 0;
 }
 
 }}

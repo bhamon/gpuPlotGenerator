@@ -50,17 +50,13 @@ std::string OpenclPlatform::getInfoString(const cl_platform_info& p_paramName) c
 		throw OpenclError(error, "Unable to retrieve info size");
 	}
 
-	char* buffer = new char[size];
-	error = clGetPlatformInfo(m_handle, p_paramName, size, (void*)buffer, 0);
+	std::unique_ptr<char[]> buffer(new char[size]);
+	error = clGetPlatformInfo(m_handle, p_paramName, size, (void*)buffer.get(), 0);
 	if(error != CL_SUCCESS) {
-		delete[] buffer;
 		throw OpenclError(error, "Unable to retrieve info value");
 	}
 
-	std::string value(buffer);
-	delete[] buffer;
-
-	return value;
+	return std::string(buffer.get());
 }
 
 std::vector<std::shared_ptr<OpenclPlatform>> OpenclPlatform::list() throw (std::exception) {
@@ -73,18 +69,15 @@ std::vector<std::shared_ptr<OpenclPlatform>> OpenclPlatform::list() throw (std::
 		throw OpenclError(error, "Unable to retrieve the OpenCL platforms number");
 	}
 
-	cl_platform_id* platforms = new cl_platform_id[platformsNumber];
-	error = clGetPlatformIDs(platformsNumber, platforms, 0);
+	std::unique_ptr<cl_platform_id[]> platforms(new cl_platform_id[platformsNumber]);
+	error = clGetPlatformIDs(platformsNumber, platforms.get(), 0);
 	if(error != CL_SUCCESS) {
-		delete[] platforms;
 		throw OpenclError(error, "Unable to retrieve the OpenCL platforms");
 	}
 
 	for(cl_uint i = 0 ; i < platformsNumber ; ++i) {
 		list.push_back(std::shared_ptr<OpenclPlatform>(new OpenclPlatform(platforms[i])));
 	}
-
-	delete[] platforms;
 
 	return list;
 }

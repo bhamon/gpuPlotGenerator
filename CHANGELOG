@@ -1,3 +1,9 @@
+4.0.0 (24/10/2014)
+  - Support for multiple output files added.
+  - Direct writing added.
+  - Memory management improved.
+  - File seek() calls enhanced.
+
 3.1.0 (09/10/2014)
   - [setup] command added.
   - Display bug corrected in the [listDevices] command.

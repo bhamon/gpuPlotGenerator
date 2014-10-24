@@ -12,9 +12,11 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <memory>
 
 #include "constants.h"
 #include "util.h"
+#include "GenerationConfig.h"
 #include "PlotsFile.h"
 #include "CommandVerify.h"
 
@@ -48,27 +50,25 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 		return -1;
 	}
 
-	unsigned char* generatedBuffer = 0;
-	unsigned char* referenceBuffer = 0;
-
-	int returnCode = 0;
-
 	try {
-		PlotsFile generated(p_args[0]);
-		PlotsFile reference(p_args[1]);
+		GenerationConfig generatedConfig(p_args[0]);
+		GenerationConfig referenceConfig(p_args[1]);
 
 		std::cout << "Checking input parameters..." << std::endl;
 
-		if(generated.getAddress() != reference.getAddress()) {
+		if(generatedConfig.getAddress() != referenceConfig.getAddress()) {
 			throw std::runtime_error("Files don't share the same address");
 		}
 
-		if(sizeof(std::size_t) == 4 && (generated.getStaggerSize() > 16000 || reference.getStaggerSize() > 16000)) {
+		if(sizeof(std::size_t) == 4 && (generatedConfig.getStaggerSize() > 16000 || referenceConfig.getStaggerSize() > 16000)) {
 			throw std::runtime_error("Stagger size value too high (32bits platform restriction)");
 		}
 
-		unsigned long long commonStart = std::max(generated.getStartNonce(), reference.getStartNonce());
-		unsigned long long commonEnd = std::min(generated.getEndNonce(), reference.getEndNonce());
+		PlotsFile generated(generatedConfig.getFullPath(), false);
+		PlotsFile reference(referenceConfig.getFullPath(), false);
+
+		unsigned long long commonStart = std::max(generatedConfig.getStartNonce(), referenceConfig.getStartNonce());
+		unsigned long long commonEnd = std::min(generatedConfig.getEndNonce(), referenceConfig.getEndNonce());
 		unsigned int commonNb = commonEnd - commonStart + 1;
 		if(commonStart > commonEnd) {
 			throw std::runtime_error("No common nonces between the two files");
@@ -90,15 +90,8 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory, sizeUnitsB, sizeLabelsB) << std::endl;
 		std::cout << "----" << std::endl;
 
-		generatedBuffer = new unsigned char[generatedBufferSize];
-		if(!generatedBuffer) {
-			throw std::runtime_error("Unable to create the generated file buffer");
-		}
-
-		referenceBuffer = new unsigned char[referenceBufferSize];
-		if(!referenceBuffer) {
-			throw std::runtime_error("Unable to create the reference file buffer");
-		}
+		std::unique_ptr<unsigned char[]> generatedBuffer(new unsigned char[generatedBufferSize]);
+		std::unique_ptr<unsigned char[]> referenceBuffer(new unsigned char[referenceBufferSize]);
 
 		std::cout << "Checking generated plots file..." << std::endl;
 
@@ -107,46 +100,44 @@ int CommandVerify::execute(const std::vector<std::string>& p_args) {
 
 		for(unsigned int i = 0 ; i < commonNb ; ++i) {
 			std::cout << std::string(console.str().length(), '\b');
+			std::cout << std::string(console.str().length(), ' ');
+			std::cout << std::string(console.str().length(), '\b');
 			console.str("");
 
 			double percent = 100.0 * (double)i / (double)commonNb;
 			console << percent << "% (" << i << "/" << commonNb << " nonces)";
-			console << "...          ";
+			console << "...";
 			std::cout << console.str();
 
-			std::streamoff generatedNonceStaggerOffset = generated.getNonceStaggerOffset(commonStart + i);
-			std::streamoff generatedNonceStaggerDecal = generated.getNonceStaggerDecal(commonStart + i);
-
-			std::streamoff referenceNonceStaggerOffset = reference.getNonceStaggerOffset(commonStart + i);
-			std::streamoff referenceNonceStaggerDecal = reference.getNonceStaggerDecal(commonStart + i);
+			generated.seek((std::streamoff)generatedConfig.getNonceStaggerOffset(commonStart + i) + generatedConfig.getNonceStaggerDecal(commonStart + i), std::ios::beg);
+			reference.seek((std::streamoff)referenceConfig.getNonceStaggerOffset(commonStart + i) + referenceConfig.getNonceStaggerDecal(commonStart + i), std::ios::beg);
 
 			for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-				generated.seek(generatedNonceStaggerOffset + generatedNonceStaggerDecal + (std::streamoff)j * generated.getStaggerSize());
-				reference.seek(referenceNonceStaggerOffset + referenceNonceStaggerDecal + (std::streamoff)j * reference.getStaggerSize());
+				generated.read(generatedBuffer.get(), SCOOP_SIZE);
+				reference.read(referenceBuffer.get(), SCOOP_SIZE);
 
-				generated.read(generatedBuffer, SCOOP_SIZE);
-				reference.read(referenceBuffer, SCOOP_SIZE);
-
-				if(!std::equal(generatedBuffer, generatedBuffer + SCOOP_SIZE, referenceBuffer)) {
+				if(!std::equal(generatedBuffer.get(), generatedBuffer.get() + SCOOP_SIZE, referenceBuffer.get())) {
 					throw std::runtime_error("Common nonces doesn't match");
 				}
+
+				generated.seek(((std::streamoff)generatedConfig.getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
+				reference.seek(((std::streamoff)referenceConfig.getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
 			}
 		}
 
 		std::cout << std::string(console.str().length(), '\b');
-		std::cout << "100% (" << commonNb << "/" << commonNb << " nonces)";
-		std::cout << "                    " << std::endl << std::endl;
+		std::cout << std::string(console.str().length(), ' ');
+		std::cout << std::string(console.str().length(), '\b');
+
+		std::cout << "100% (" << commonNb << "/" << commonNb << " nonces)" << std::endl << std::endl;
 		std::cout << "[OK] The generated plots file has been successfully verified against the provided reference" << std::endl;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	}
 
-	if(referenceBuffer) { delete[] referenceBuffer; }
-	if(generatedBuffer) { delete[] generatedBuffer; }
-
-	return returnCode;
+	return 0;
 }
 
 }}

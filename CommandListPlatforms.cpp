@@ -8,7 +8,6 @@
 */
 
 #include <iostream>
-#include <vector>
 #include <memory>
 #include <exception>
 
@@ -36,8 +35,6 @@ void CommandListPlatforms::help() const {
 }
 
 int CommandListPlatforms::execute(const std::vector<std::string>&) {
-	int returnCode = 0;
-
 	try {
 		std::vector<std::shared_ptr<OpenclPlatform>> platforms(OpenclPlatform::list());
 		std::cout << "Platforms number: " << platforms.size() << std::endl;
@@ -53,14 +50,14 @@ int CommandListPlatforms::execute(const std::vector<std::string>&) {
 	} catch(const OpenclError& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR][" << ex.getCode() << "][" << ex.getCodeString() << "] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	} catch(const std::exception& ex) {
 		std::cout << std::endl;
 		std::cout << "[ERROR] " << ex.what() << std::endl;
-		returnCode = -1;
+		return -1;
 	}
 
-	return returnCode;
+	return 0;
 }
 
 }}

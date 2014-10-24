@@ -11,6 +11,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <memory>
 
 #include "CommandHelp.h"
 #include "CommandListPlatforms.h"
@@ -21,21 +22,21 @@
 
 int main(int p_argc, char* p_argv[]) {
 	std::cout << "-------------------------" << std::endl;
-	std::cout << "GPU plot generator v3.1.0" << std::endl;
+	std::cout << "GPU plot generator v4.0.0" << std::endl;
 	std::cout << "-------------------------" << std::endl;
 	std::cout << "Author:   Cryo" << std::endl;
 	std::cout << "Bitcoin:  138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD" << std::endl;
 	std::cout << "Burst:    BURST-YA29-QCEW-QXC3-BKXDL" << std::endl;
 	std::cout << "----" << std::endl;
 
-	typedef std::map<std::string, cryo::gpuPlotGenerator::Command*> CommandsMap;
+	typedef cryo::gpuPlotGenerator::CommandHelp::CommandsMap CommandsMap;
 	CommandsMap commands;
-	commands.insert(CommandsMap::value_type("help", new cryo::gpuPlotGenerator::CommandHelp(commands)));
-	commands.insert(CommandsMap::value_type("listPlatforms", new cryo::gpuPlotGenerator::CommandListPlatforms()));
-	commands.insert(CommandsMap::value_type("listDevices", new cryo::gpuPlotGenerator::CommandListDevices()));
-	commands.insert(CommandsMap::value_type("setup", new cryo::gpuPlotGenerator::CommandSetup()));
-	commands.insert(CommandsMap::value_type("generate", new cryo::gpuPlotGenerator::CommandGenerate()));
-	commands.insert(CommandsMap::value_type("verify", new cryo::gpuPlotGenerator::CommandVerify()));
+	commands.insert(CommandsMap::value_type("help", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandHelp(commands))));
+	commands.insert(CommandsMap::value_type("listPlatforms", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandListPlatforms())));
+	commands.insert(CommandsMap::value_type("listDevices", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandListDevices())));
+	commands.insert(CommandsMap::value_type("setup", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandSetup())));
+	commands.insert(CommandsMap::value_type("generate", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandGenerate())));
+	commands.insert(CommandsMap::value_type("verify", CommandsMap::mapped_type(new cryo::gpuPlotGenerator::CommandVerify())));
 
 	if(p_argc == 1) {
 		commands.at("help")->help();
@@ -52,10 +53,5 @@ int main(int p_argc, char* p_argv[]) {
 		return -1;
 	}
 
-	int returnCode = commands.at(command)->execute(args);
-	for(CommandsMap::const_reference entry : commands) {
-		delete entry.second;
-	}
-
-	return returnCode;
+	return commands.at(command)->execute(args);
 }
