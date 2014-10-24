@@ -40,8 +40,9 @@ void GenerationWriterDirect::writeNonces(std::shared_ptr<GenerationContext>& p_c
 			p_context->getPlotsFile()->seek(((std::streamoff)p_context->getConfig()->getStaggerSize() - 1) * SCOOP_SIZE, std::ios::cur);
 		}
 
-		p_context->getPlotsFile()->flush();
 	}
+
+	p_context->getPlotsFile()->flush();
 }
 
 }}
