@@ -5,6 +5,14 @@ A GPU plot generator for Burst coin.
 - Bitcoin: 138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD
 - Burst: BURST-YA29-QCEW-QXC3-BKXDL
 
+Features :
+- Multiple devices support to generate plots.
+- Multiple output files support to enhance throughput.
+- Buffered or direct writing support.
+- Embedded verification tool.
+- Easy setup with the embedded tool.
+- Clear generation information with percent done and estimated time of arrival.
+
 Based on the code of the official miner and dcct's plotgen.
 
 If you like this software, support me ;)
@@ -14,7 +22,8 @@ If you like this software, support me ;)
 ### Windows
 
 Install msys/mingw.
-Install OpenCL (available in the manufacturer SDKs) or find the include/lib files on your hard drive (some drivers include those files).
+Install OpenCL (available in the manufacturer SDKs) or find the include/lib files on your hard drive (some drivers
+include those files).
 
 Modify the [PLATFORM] variable to one of [32] or [64] depending on the target platform.
 Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
@@ -53,8 +62,11 @@ The [dist] folder contains all the necessary files to launch the GPU plotter.
 ## Setup
 
 The GPU plot generator needs a configured [devices.txt] file in order to work properly. The devices listed
-in this file will be used by the generation process to compute plots. Each device must be declared on its own
-line in the following format:
+in this file will be used in parrallel by the generation process to compute plots. You can create this file
+at hand with the following instructions or directly run the [setup] command described below to be guided through
+the [devices.txt] creation process.
+
+Each device must be declared on its own line in the following format:
 
 	[platformId] [deviceId] [globalWorkSize] [localWorkSize] [hashesNumber]
 
@@ -82,7 +94,56 @@ Use the commands below to have the commands list and usage:
 	./gpuPlotGenerator <command> ...
 	Executes the specified command.
 
-Refer to the help message of each command for more information.
+### List platforms
+
+This command lists and describes the OpenCL platforms on your system. Each platform contains one or more devices
+that can be used by the generation process.
+
+Example usage:
+
+	./gpuPlotGenerator listPlatforms
+
+### List devices
+
+This command lists and describes the OpenCL devices for a specific platform.
+
+Example usage:
+
+	./gpuPlotGenerator listDevices 0
+
+### Setup
+
+This command is a step by step guide to create the [devices.txt] configuration file.
+
+Example usage:
+
+	./gpuPlotGenerator setup
+
+Use the displayed menu items to add/remove devices from you configuration file.
+When adding a device, recommended values for each device parameter will be displayed to help you find the
+best parameters for your device.
+Don't forget to save before exiting.
+
+### Generation
+
+This command generate nonces using the configured devices and write them to the specified output files.
+The generation parameters are inferred from the output files names. The files names format must be:
+
+	<address>_<startNonce>_<noncesNumber>_<staggerSize>
+
+Example usage:
+
+	./gpuPlotGenerator generate auto /path/to/files/123456_0_50000_5000 /path/123456_50000_10000_2000
+	This call will generate two plots files.
+
+### Verification
+
+This command verify overlapping nonces between two plots files. It is usefull to verify a plots file integrity.
+
+Example usage:
+
+	./gpuPlotGenerator verify /path/to/generated/123456_0_1000000_8000 /path/to/verification/123456_275000_10_10
+	This call will verify that the nonces 275000 to 275009 matches between the two files.
 
 ## Troubleshooting
 
@@ -123,3 +184,6 @@ To find the best parameters for your graphic card, you can use the informations 
 - The [globalWorkSize] can't go above the "Max memory allocation size" / PLOT_SIZE.
 - The [globalWorkSize] should be less or equal than the "Max work group size" (doesn't apply to some devices, mostly CPUs).
 - The [localWorkSize] should be less or equal than the "Max compute units" (doesn't apply to some devices, mostly CPUs).
+
+When using multiple devices, make sure they have nearly the same performances. One slower device in the middle
+of more powerfull ones can be bottleneck.
