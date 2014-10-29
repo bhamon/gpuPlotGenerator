@@ -336,9 +336,9 @@ void computePlots(
 				p_generationContexts.begin(),
 				p_generationContexts.end(),
 				[](std::shared_ptr<GenerationContext>& p_c1, std::shared_ptr<GenerationContext>& p_c2) {
-					if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+					if(p_c1->getNoncesDistributed() == p_c1->getConfig()->getNoncesNumber()) {
 						return false;
-					} else if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+					} else if(p_c2->getNoncesDistributed() == p_c2->getConfig()->getNoncesNumber()) {
 						return true;
 					}
 
