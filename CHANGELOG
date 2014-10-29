@@ -1,3 +1,6 @@
+4.0.1 (29/10/2014)
+  - Job selection algorithm corrected in the [generate] command (caused issues while plotting multiple files with different size).
+
 4.0.0 (24/10/2014)
   - Support for multiple output files added.
   - Direct writing added.
