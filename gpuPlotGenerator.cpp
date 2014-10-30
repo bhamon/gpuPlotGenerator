@@ -22,7 +22,7 @@
 
 int main(int p_argc, char* p_argv[]) {
 	std::cout << "-------------------------" << std::endl;
-	std::cout << "GPU plot generator v4.0.1" << std::endl;
+	std::cout << "GPU plot generator v4.0.2" << std::endl;
 	std::cout << "-------------------------" << std::endl;
 	std::cout << "Author:   Cryo" << std::endl;
 	std::cout << "Bitcoin:  138gMBhCrNkbaiTCmUhP9HLU9xwn5QKZgD" << std::endl;
