@@ -1,3 +1,12 @@
+4.0.2 (30/10/2014)
+  - Parameter [buffersNb] replaced by [writerType] in the [generate] command (rotating buffers removed).
+  - Writing strategy is now handled by generation contexts.
+  - Plots buffering is now handled by generation devices.
+  - Less memory consumption.
+
+4.0.1 (29/10/2014)
+  - Job selection algorithm corrected in the [generate] command (caused issues while plotting multiple files with different size).
+
 4.0.0 (24/10/2014)
   - Support for multiple output files added.
   - Direct writing added.

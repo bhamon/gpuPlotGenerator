@@ -26,10 +26,10 @@
 #include "GenerationConfig.h"
 #include "PlotsFile.h"
 #include "GenerationContext.h"
+#include "GenerationContextBuffer.h"
+#include "GenerationContextDirect.h"
 #include "GenerationWork.h"
 #include "CommandGenerate.h"
-#include "GenerationWriterBuffer.h"
-#include "GenerationWriterDirect.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -46,13 +46,13 @@ CommandGenerate::~CommandGenerate() throw () {
 }
 
 void CommandGenerate::help() const {
-	std::cout << "Usage: ./gpuPlotGenerator generate <buffersNb> <plotsFiles...>" << std::endl;
+	std::cout << "Usage: ./gpuPlotGenerator generate <writerType> <plotsFiles...>" << std::endl;
 	std::cout << "    Generate plots using the configured devices and write them to the specified files." << std::endl;
 	std::cout << "Parameters:" << std::endl;
-	std::cout << "    - buffersNb: Number of rotating buffers to use to write the output files." << std::endl;
-	std::cout << "                 Specify [auto] to create as many buffers as output files." << std::endl;
+	std::cout << "    - writerType: Writer type to use to write the output files." << std::endl;
+	std::cout << "                 Specify [buffer] to stack nonces in a buffer before writing them." << std::endl;
 	std::cout << "                 Specify [direct] to write nonces directly to files." << std::endl;
-	std::cout << "    - plotsFiles: A space-sparated list of output files to generate." << std::endl;
+	std::cout << "    - plotsFiles: A space-separated list of output files to generate." << std::endl;
 	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>] with:" << std::endl;
 	std::cout << "                      - address: Burst numerical address." << std::endl;
 	std::cout << "                      - startNonce: First nonce of the plot generation." << std::endl;
@@ -67,19 +67,9 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 	}
 
 	try {
-		std::size_t buffersNb;
-		bool direct = false;
-		if(p_args[0] == "auto") {
-			buffersNb = p_args.size() - 1;
-		} else if(p_args[0] == "direct") {
-			buffersNb = p_args.size() - 1;
-			direct = true;
-		} else {
-			buffersNb = std::atol(p_args[0].c_str());
-		}
-
-		if(buffersNb == 0 || buffersNb > p_args.size() - 1) {
-			throw std::runtime_error("Parameter <buffersNb> must be between 1 and the number of output plots files");
+		std::string writerType(p_args[0]);
+		if(writerType != "buffer" && writerType != "direct") {
+			throw std::runtime_error("Unknown writer type");
 		}
 
 		std::vector<unsigned long long> timeUnits {60, 60, 24, 7, 52};
@@ -101,7 +91,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 		std::cout << "Initializing generation devices..." << std::endl;
 		std::list<std::shared_ptr<GenerationDevice>> generationDevices;
-		unsigned long long maxBufferDeviceSize = 0;
+		unsigned long long cpuMemory = 0;
 		for(std::size_t i = 0, end = deviceConfigs.size() ; i < end ; ++i) {
 			std::shared_ptr<DeviceConfig> config(deviceConfigs[i]);
 
@@ -115,14 +105,15 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 			config->normalize();
 
-			unsigned long long bufferSize = config->getBufferSize();
-			maxBufferDeviceSize = std::max(maxBufferDeviceSize, bufferSize);
-
 			std::shared_ptr<OpenclDevice> device(devices[config->getPlatform()][config->getDevice()]);
-			std::cout << "    [" << i << "] Device: " << device->getName() << " (" << device->getVersion() << ")" << std::endl;
-			std::cout << "    [" << i << "] Used memory: " << cryo::util::formatValue(bufferSize >> 20, sizeUnits, sizeLabels) << std::endl;
+			std::shared_ptr<GenerationDevice> generationDevice(new GenerationDevice(config, device));
+			cpuMemory +=generationDevice->getMemorySize();
 
-			generationDevices.push_back(std::shared_ptr<GenerationDevice>(new GenerationDevice(config, device)));
+			std::cout << "    [" << i << "] Device: " << device->getName() << " (" << device->getVersion() << ")" << std::endl;
+			std::cout << "    [" << i << "] Device memory: " << cryo::util::formatValue(config->getBufferSize() >> 20, sizeUnits, sizeLabels) << std::endl;
+			std::cout << "    [" << i << "] CPU memory: " << cryo::util::formatValue(generationDevice->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
+
+			generationDevices.push_back(generationDevice);
 		}
 
 		if(generationDevices.size() == 0) {
@@ -131,49 +122,36 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 		std::cout << "Initializing generation contexts..." << std::endl;
 		std::list<std::shared_ptr<GenerationContext>> generationContexts;
-		unsigned long long maxBufferStaggerSize = 0;
+		unsigned long long noncesNumber = 0;
 		for(std::size_t i = 1, end = p_args.size() ; i < end ; ++i) {
 			std::shared_ptr<GenerationConfig> config(new GenerationConfig(p_args[i]));
 			config->normalize();
 
 			std::shared_ptr<PlotsFile> plotsFile(new PlotsFile(config->getFullPath(), true));
+			std::shared_ptr<GenerationContext> generationContext;
+			if(writerType == "buffer") {
+				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextBuffer(config, plotsFile));
+			} else if(writerType == "direct") {
+				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextDirect(config, plotsFile));
+			}
 
-			maxBufferStaggerSize = std::max(maxBufferStaggerSize, (unsigned long long)config->getStaggerSize() * PLOT_SIZE);
+			cpuMemory +=generationContext->getMemorySize();
+			noncesNumber += generationContext->getConfig()->getNoncesNumber();
 
 			std::cout << "    [" << (i - 1) << "] Path: " << config->getFullPath() << std::endl;
 			std::cout << "    [" << (i - 1) << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(config->getNoncesSize() >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
+			std::cout << "    [" << (i - 1) << "] CPU memory: " << cryo::util::formatValue(generationContext->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
 
-			generationContexts.push_back(std::shared_ptr<GenerationContext>(new GenerationContext(config, plotsFile)));
-		}
-
-		std::cout << "Initializing generation writers..." << std::endl;
-		std::list<std::shared_ptr<GenerationWriter>> generationWriters;
-		for(std::size_t i = 0 ; i < buffersNb ; ++i) {
-			if(direct) {
-				generationWriters.push_back(std::shared_ptr<GenerationWriter>(new GenerationWriterDirect(maxBufferDeviceSize)));
-			} else {
-				generationWriters.push_back(std::shared_ptr<GenerationWriter>(new GenerationWriterBuffer(maxBufferDeviceSize, maxBufferStaggerSize)));
-			}
+			generationContexts.push_back(generationContext);
 		}
 
 		std::cout << "----" << std::endl;
-
-		unsigned long long cpuMemory = 0;
-		for(const std::shared_ptr<GenerationWriter>& generationWriter : generationWriters) {
-			cpuMemory += generationWriter->getMemorySize();
-		}
-
-		unsigned long long noncesNumber = 0;
-		for(const std::shared_ptr<GenerationContext>& generationContext : generationContexts) {
-			noncesNumber += generationContext->getConfig()->getNoncesNumber();
-		}
 
 		std::cout << "Devices number: " << generationDevices.size() << std::endl;
 		std::cout << "Plots files number: " << generationContexts.size() << std::endl;
 		std::cout << "Total nonces number: " << noncesNumber << std::endl;
 		std::cout << "CPU memory: " << cryo::util::formatValue(cpuMemory >> 20, sizeUnits, sizeLabels) << std::endl;
 		std::cout << "----" << std::endl;
-
 
 		std::cout << "Generating nonces..." << std::endl;
 		std::exception_ptr error;
@@ -204,17 +182,17 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 				threads.push_back(thread);
 			}
 
-			for(std::shared_ptr<GenerationWriter>& generationWriter : generationWriters) {
+			for(std::shared_ptr<GenerationContext>& generationContext : generationContexts) {
 				std::shared_ptr<std::thread> thread(
-					new std::thread([&](std::shared_ptr<GenerationWriter> p_generationWriter) {
+					new std::thread([&](std::shared_ptr<GenerationContext> p_generationContext) {
 						try {
-							writeNonces(error, mutex, barrier, generationContexts, p_generationWriter);
+							writeNonces(error, mutex, barrier, generationContexts, p_generationContext);
 						} catch(const std::exception& ex) {
 							std::unique_lock<std::mutex> errorLock(mutex);
 							error = std::current_exception();
 							barrier.notify_all();
 						}
-					}, generationWriter),
+					}, generationContext),
 					[](std::thread* p_thread){
 						p_thread->join();
 						delete p_thread;
@@ -336,9 +314,9 @@ void computePlots(
 				p_generationContexts.begin(),
 				p_generationContexts.end(),
 				[](std::shared_ptr<GenerationContext>& p_c1, std::shared_ptr<GenerationContext>& p_c2) {
-					if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+					if(p_c1->getNoncesDistributed() == p_c1->getConfig()->getNoncesNumber()) {
 						return false;
-					} else if(p_c1->getConfig()->getNoncesNumber() == p_c1->getNoncesWritten()) {
+					} else if(p_c2->getNoncesDistributed() == p_c2->getConfig()->getNoncesNumber()) {
 						return true;
 					}
 
@@ -374,10 +352,9 @@ void writeNonces(
 	std::mutex& p_mutex,
 	std::condition_variable& p_barrier,
 	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
-	std::shared_ptr<GenerationWriter>& p_writer
+	std::shared_ptr<GenerationContext>& p_context
 ) throw (std::exception) {
 	while(true) {
-		std::shared_ptr<GenerationContext> generationContext;
 		std::shared_ptr<GenerationWork> generationWork;
 
 		{
@@ -400,29 +377,20 @@ void writeNonces(
 					return true;
 				}
 
-				it = std::find_if(
-					p_generationContexts.begin(),
-					p_generationContexts.end(),
-					[](std::shared_ptr<GenerationContext>& p_generationContext) {
-						return
-							p_generationContext->hasPendingWork() &&
-							p_generationContext->getLastPendingWork()->getStatus() == GenerationStatus::Generated;
-					}
-				);
-
-				return it != p_generationContexts.end();
+				return
+					p_context->hasPendingWork() &&
+					p_context->getLastPendingWork()->getStatus() == GenerationStatus::Generated;
 			});
 
 			if(p_error || it == p_generationContexts.end()) {
 				break;
 			}
 
-			generationContext = *it;
-			generationWork = generationContext->getLastPendingWork();
+			generationWork = p_context->getLastPendingWork();
 			generationWork->setStatus(GenerationStatus::Writing);
 		}
 
-		p_writer->readPlots(generationContext, generationWork);
+		generationWork->getDevice()->bufferPlots();
 
 		{
 			std::unique_lock<std::mutex> lock(p_mutex);
@@ -430,17 +398,18 @@ void writeNonces(
 			p_barrier.notify_all();
 		}
 
-		p_writer->writeNonces(generationContext, generationWork);
+		p_context->writeNonces(generationWork);
 
 		{
 			std::unique_lock<std::mutex> lock(p_mutex);
 
 			generationWork->setStatus(GenerationStatus::Written);
-			generationContext->popLastPendingWork();
+			p_context->popLastPendingWork();
 			p_barrier.notify_all();
 
-			if(generationContext->getNoncesWritten() == generationContext->getConfig()->getNoncesNumber()) {
+			if(p_context->getNoncesWritten() == p_context->getConfig()->getNoncesNumber()) {
 // TODO: std::cout?
+				break;
 			}
 		}
 	}

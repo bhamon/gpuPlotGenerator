@@ -23,21 +23,7 @@ GenerationContext::GenerationContext(const std::shared_ptr<GenerationConfig>& p_
 : m_config(p_config), m_plotsFile(p_plotsFile), m_noncesDistributed(0), m_noncesWritten(0), m_pendingWorks() {
 }
 
-GenerationContext::GenerationContext(const GenerationContext& p_other)
-: m_config(p_other.m_config), m_plotsFile(p_other.m_plotsFile), m_noncesDistributed(p_other.m_noncesDistributed), m_noncesWritten(p_other.m_noncesWritten), m_pendingWorks(p_other.m_pendingWorks) {
-}
-
 GenerationContext::~GenerationContext() throw () {
-}
-
-GenerationContext& GenerationContext::operator=(const GenerationContext& p_other) {
-	m_config = p_other.m_config;
-	m_plotsFile = p_other.m_plotsFile;
-	m_noncesDistributed = p_other.m_noncesDistributed;
-	m_noncesWritten = p_other.m_noncesWritten;
-	m_pendingWorks = p_other.m_pendingWorks;
-
-	return *this;
 }
 
 const std::shared_ptr<GenerationWork>& GenerationContext::requestWork(const std::shared_ptr<GenerationDevice>& p_device) throw (std::exception) {

@@ -22,7 +22,7 @@ namespace cryo {
 namespace gpuPlotGenerator {
 
 class GenerationContext {
-	private:
+	protected:
 		std::shared_ptr<GenerationConfig> m_config;
 		std::shared_ptr<PlotsFile> m_plotsFile;
 		unsigned int m_noncesDistributed;
@@ -31,11 +31,11 @@ class GenerationContext {
 
 	public:
 		GenerationContext(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<PlotsFile>& p_plotsFile);
-		GenerationContext(const GenerationContext& p_other);
+		GenerationContext(const GenerationContext& p_other) = delete;
 
 		virtual ~GenerationContext() throw ();
 
-		GenerationContext& operator=(const GenerationContext& p_other);
+		GenerationContext& operator=(const GenerationContext& p_other) = delete;
 
 		inline const std::shared_ptr<GenerationConfig>& getConfig() const;
 		inline const std::shared_ptr<PlotsFile>& getPlotsFile() const;
@@ -48,6 +48,9 @@ class GenerationContext {
 
 		const std::shared_ptr<GenerationWork>& requestWork(const std::shared_ptr<GenerationDevice>& p_device) throw (std::exception);
 		void popLastPendingWork() throw (std::exception);
+
+		virtual std::size_t getMemorySize() const = 0;
+		virtual void writeNonces(std::shared_ptr<GenerationWork>& p_work) throw (std::exception) = 0;
 };
 
 }}
