@@ -12,7 +12,6 @@
 #include <fstream>
 #include <streambuf>
 
-#include "constants.h"
 #include "OpenclError.h"
 #include "GenerationDevice.h"
 
@@ -20,7 +19,9 @@ namespace cryo {
 namespace gpuPlotGenerator {
 
 GenerationDevice::GenerationDevice(const std::shared_ptr<DeviceConfig>& p_config, const std::shared_ptr<OpenclDevice>& p_device) throw (std::exception)
-: m_config(p_config), m_device(p_device), m_context(0), m_commandQueue(0), m_buffer(0), m_program(0), m_kernels{0, 0, 0}, m_available(true) {
+: m_config(p_config), m_device(p_device), m_context(0), m_commandQueue(0), m_bufferDevice(0), m_program(0), m_kernels{0, 0, 0}, m_available(true) {
+	m_bufferCpu = new unsigned char[getMemorySize()];
+
 	cl_int error;
 
 	m_context = clCreateContext(0, 1, &m_device->getHandle(), NULL, NULL, &error);
@@ -33,7 +34,7 @@ GenerationDevice::GenerationDevice(const std::shared_ptr<DeviceConfig>& p_config
 		throw OpenclError(error, "Unable to create the OpenCL command queue");
 	}
 
-	m_buffer = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sizeof(unsigned char) * m_config->getGlobalWorkSize() * GEN_SIZE, 0, &error);
+	m_bufferDevice = clCreateBuffer(m_context, CL_MEM_READ_WRITE, sizeof(unsigned char) * m_config->getGlobalWorkSize() * GEN_SIZE, 0, &error);
 	if(error != CL_SUCCESS) {
 		throw OpenclError(error, "Unable to create the OpenCL GPU buffer");
 	}
@@ -73,7 +74,7 @@ GenerationDevice::GenerationDevice(const std::shared_ptr<DeviceConfig>& p_config
 		throw OpenclError(error, "Unable to create the OpenCL step1 kernel");
 	}
 
-	error = clSetKernelArg(m_kernels[0], 0, sizeof(cl_mem), (void*)&m_buffer);
+	error = clSetKernelArg(m_kernels[0], 0, sizeof(cl_mem), (void*)&m_bufferDevice);
 	if(error != CL_SUCCESS) {
 		throw OpenclError(error, "Unable to set the OpenCL step1 kernel arguments");
 	}
@@ -83,7 +84,7 @@ GenerationDevice::GenerationDevice(const std::shared_ptr<DeviceConfig>& p_config
 		throw OpenclError(error, "Unable to create the OpenCL step2 kernel");
 	}
 
-	error = clSetKernelArg(m_kernels[1], 0, sizeof(cl_mem), (void*)&m_buffer);
+	error = clSetKernelArg(m_kernels[1], 0, sizeof(cl_mem), (void*)&m_bufferDevice);
 	if(error != CL_SUCCESS) {
 		throw OpenclError(error, "Unable to set the OpenCL step2 kernel arguments");
 	}
@@ -93,7 +94,7 @@ GenerationDevice::GenerationDevice(const std::shared_ptr<DeviceConfig>& p_config
 		throw OpenclError(error, "Unable to create the OpenCL step3 kernel");
 	}
 
-	error = clSetKernelArg(m_kernels[2], 0, sizeof(cl_mem), (void*)&m_buffer);
+	error = clSetKernelArg(m_kernels[2], 0, sizeof(cl_mem), (void*)&m_bufferDevice);
 	if(error != CL_SUCCESS) {
 		throw OpenclError(error, "Unable to set the OpenCL step3 kernel arguments");
 	}
@@ -104,9 +105,11 @@ GenerationDevice::~GenerationDevice() throw () {
 	if(m_kernels[1]) { clReleaseKernel(m_kernels[1]); }
 	if(m_kernels[0]) { clReleaseKernel(m_kernels[0]); }
 	if(m_program) { clReleaseProgram(m_program); }
-	if(m_buffer) { clReleaseMemObject(m_buffer); }
+	if(m_bufferDevice) { clReleaseMemObject(m_bufferDevice); }
 	if(m_commandQueue) { clReleaseCommandQueue(m_commandQueue); }
 	if(m_context) { clReleaseContext(m_context); }
+
+	delete[] m_bufferCpu;
 }
 
 void GenerationDevice::computePlots(unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_workSize) throw (std::exception) {
@@ -165,17 +168,11 @@ void GenerationDevice::computePlots(unsigned long long p_address, unsigned long 
 	}
 }
 
-void GenerationDevice::readPlots(unsigned char* p_buffer, std::size_t p_offset, unsigned int p_size) throw (std::exception) {
-	if(p_offset >= m_config->getGlobalWorkSize()) {
-		throw std::runtime_error("Offset out of GPU buffer bounds");
-	} else if(p_offset + p_size > m_config->getGlobalWorkSize()) {
-		throw std::runtime_error("Size out of GPU buffer bounds");
-	}
-
-	std::size_t offsetGpu = p_offset * GEN_SIZE;
+void GenerationDevice::bufferPlots() throw (std::exception) {
+	std::size_t offsetGpu = 0;
 	std::size_t offsetCpu = 0;
-	for(unsigned int i = 0 ; i < p_size ; ++i, offsetGpu += GEN_SIZE, offsetCpu += PLOT_SIZE) {
-		int error = clEnqueueReadBuffer(m_commandQueue, m_buffer, CL_TRUE, sizeof(unsigned char) * offsetGpu, sizeof(unsigned char) * PLOT_SIZE, p_buffer + offsetCpu, 0, 0, 0);
+	for(unsigned int i = 0, end = m_config->getGlobalWorkSize() ; i < end ; ++i, offsetGpu += GEN_SIZE, offsetCpu += PLOT_SIZE) {
+		int error = clEnqueueReadBuffer(m_commandQueue, m_bufferDevice, CL_TRUE, sizeof(unsigned char) * offsetGpu, sizeof(unsigned char) * PLOT_SIZE, m_bufferCpu + offsetCpu, 0, 0, 0);
 		if(error != CL_SUCCESS) {
 			throw OpenclError(error, "Error in synchronous read");
 		}

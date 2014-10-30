@@ -22,7 +22,6 @@
 #include "GenerationDevice.h"
 #include "GenerationContext.h"
 #include "GenerationWork.h"
-#include "GenerationWriter.h"
 
 namespace cryo {
 namespace gpuPlotGenerator {
@@ -50,7 +49,7 @@ void writeNonces(
 	std::mutex& p_mutex,
 	std::condition_variable& p_barrier,
 	std::list<std::shared_ptr<GenerationContext>>& p_generationContexts,
-	std::shared_ptr<GenerationWriter>& p_writer
+	std::shared_ptr<GenerationContext>& p_context
 ) throw (std::exception);
 
 }}

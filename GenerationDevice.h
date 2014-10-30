@@ -15,6 +15,7 @@
 #include <exception>
 #include <CL/cl.h>
 
+#include "constants.h"
 #include "DeviceConfig.h"
 #include "OpenclDevice.h"
 
@@ -25,9 +26,10 @@ class GenerationDevice {
 	private:
 		std::shared_ptr<DeviceConfig> m_config;
 		std::shared_ptr<OpenclDevice> m_device;
+		unsigned char* m_bufferCpu;
 		cl_context m_context;
 		cl_command_queue m_commandQueue;
-		cl_mem m_buffer;
+		cl_mem m_bufferDevice;
 		cl_program m_program;
 		cl_kernel m_kernels[3];
 		bool m_available;
@@ -42,11 +44,13 @@ class GenerationDevice {
 
 		inline const std::shared_ptr<DeviceConfig>& getConfig() const;
 		inline const std::shared_ptr<OpenclDevice>& getDevice() const;
+		inline const unsigned char* getBufferCpu() const;
+		inline std::size_t getMemorySize() const;
 		inline bool isAvailable() const;
 		inline void setAvailable(bool p_available);
 
 		void computePlots(unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_workSize) throw (std::exception);
-		void readPlots(unsigned char* p_buffer, std::size_t p_offset, unsigned int p_size) throw (std::exception);
+		void bufferPlots() throw (std::exception);
 
 	private:
 		std::string loadSource(const std::string& p_file) const throw (std::exception);
@@ -63,6 +67,14 @@ inline const std::shared_ptr<DeviceConfig>& GenerationDevice::getConfig() const 
 
 inline const std::shared_ptr<OpenclDevice>& GenerationDevice::getDevice() const {
 	return m_device;
+}
+
+inline const unsigned char* GenerationDevice::getBufferCpu() const {
+	return m_bufferCpu;
+}
+
+inline std::size_t GenerationDevice::getMemorySize() const {
+	return (std::size_t)m_config->getGlobalWorkSize() * PLOT_SIZE;
 }
 
 inline bool GenerationDevice::isAvailable() const {
