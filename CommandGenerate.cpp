@@ -111,7 +111,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 			std::cout << "    [" << i << "] Device: " << device->getName() << " (" << device->getVersion() << ")" << std::endl;
 			std::cout << "    [" << i << "] Device memory: " << cryo::util::formatValue(config->getBufferSize() >> 20, sizeUnits, sizeLabels) << std::endl;
-			std::cout << "    [" << i << "] CPU memory: " << cryo::util::formatValue(generationDevice->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
+			std::cout << "    [" << i << "] CPU memory: " << cryo::util::formatValue((unsigned long long)generationDevice->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
 
 			generationDevices.push_back(generationDevice);
 		}
@@ -140,7 +140,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 
 			std::cout << "    [" << (i - 1) << "] Path: " << config->getFullPath() << std::endl;
 			std::cout << "    [" << (i - 1) << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(config->getNoncesSize() >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
-			std::cout << "    [" << (i - 1) << "] CPU memory: " << cryo::util::formatValue(generationContext->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
+			std::cout << "    [" << (i - 1) << "] CPU memory: " << cryo::util::formatValue((unsigned long long)generationContext->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
 
 			generationContexts.push_back(generationContext);
 		}
