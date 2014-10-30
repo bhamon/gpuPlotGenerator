@@ -133,8 +133,8 @@ The generation parameters are inferred from the output files names. The files na
 
 Example usage:
 
-	./gpuPlotGenerator generate auto /path/to/files/123456_0_50000_5000 /path/123456_50000_10000_2000
-	This call will generate two plots files.
+	./gpuPlotGenerator generate buffer /path/to/files/123456_0_50000_5000 /path/123456_50000_10000_2000
+	This call will generate two plots files using the "buffer" writing strategy.
 
 ### Verification
 
