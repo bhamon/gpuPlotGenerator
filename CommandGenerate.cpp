@@ -52,6 +52,8 @@ void CommandGenerate::help() const {
 	std::cout << "    - writerType: Writer type to use to write the output files." << std::endl;
 	std::cout << "                 Specify [buffer] to stack nonces in a buffer before writing them." << std::endl;
 	std::cout << "                 Specify [direct] to write nonces directly to files." << std::endl;
+	std::cout << "                     The <staggerSize> value will be used to configure the temporary RAM buffer size." << std::endl;
+	std::cout << "                     The output file will always have <staggerSize> = <noncesNumber>." << std::endl;
 	std::cout << "    - plotsFiles: A space-separated list of output files to generate." << std::endl;
 	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>] with:" << std::endl;
 	std::cout << "                      - address: Burst numerical address." << std::endl;
@@ -123,24 +125,29 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 		std::cout << "Initializing generation contexts..." << std::endl;
 		std::list<std::shared_ptr<GenerationContext>> generationContexts;
 		unsigned long long noncesNumber = 0;
-		for(std::size_t i = 1, end = p_args.size() ; i < end ; ++i) {
-			std::shared_ptr<GenerationConfig> config(new GenerationConfig(p_args[i]));
+		for(std::size_t i = 0, end = p_args.size() - 1 ; i < end ; ++i) {
+			std::shared_ptr<GenerationConfig> config(new GenerationConfig(p_args[i + 1]));
 			config->normalize();
 
-			std::shared_ptr<PlotsFile> plotsFile(new PlotsFile(config->getFullPath(), true));
+			std::shared_ptr<PlotsFile> plotsFile;
 			std::shared_ptr<GenerationContext> generationContext;
 			if(writerType == "buffer") {
+				plotsFile = std::shared_ptr<PlotsFile>(new PlotsFile(config->getFullPath(), true));
 				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextBuffer(config, plotsFile));
 			} else if(writerType == "direct") {
-				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextDirect(config, plotsFile));
+				unsigned int staggerSize = config->getStaggerSize();
+				config = std::shared_ptr<GenerationConfig>(new GenerationConfig(config->getPath(), config->getAddress(), config->getStartNonce(), config->getNoncesNumber(), config->getNoncesNumber()));
+
+				plotsFile = std::shared_ptr<PlotsFile>(new PlotsFile(config->getFullPath(), true));
+				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextDirect(config, plotsFile, staggerSize));
 			}
 
-			cpuMemory +=generationContext->getMemorySize();
+			cpuMemory += generationContext->getMemorySize();
 			noncesNumber += generationContext->getConfig()->getNoncesNumber();
 
-			std::cout << "    [" << (i - 1) << "] Path: " << config->getFullPath() << std::endl;
-			std::cout << "    [" << (i - 1) << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(config->getNoncesSize() >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
-			std::cout << "    [" << (i - 1) << "] CPU memory: " << cryo::util::formatValue((unsigned long long)generationContext->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
+			std::cout << "    [" << i << "] Path: " << config->getFullPath() << std::endl;
+			std::cout << "    [" << i << "] Nonces: " << config->getStartNonce() << " to " << config->getEndNonce() << " (" << cryo::util::formatValue(config->getNoncesSize() >> 20, sizeUnits, sizeLabels) << ")" << std::endl;
+			std::cout << "    [" << i << "] CPU memory: " << cryo::util::formatValue((unsigned long long)generationContext->getMemorySize() >> 20, sizeUnits, sizeLabels) << std::endl;
 
 			generationContexts.push_back(generationContext);
 		}

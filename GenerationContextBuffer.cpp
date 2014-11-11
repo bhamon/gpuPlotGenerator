@@ -34,6 +34,7 @@ void GenerationContextBuffer::writeNonces(std::shared_ptr<GenerationWork>& p_wor
 	for(unsigned int i = 0, end = p_work->getWorkSize() ; i < end ; ++i, bufferOffset += PLOT_SIZE) {
 		unsigned int staggerNonce = (m_noncesWritten + i) % staggerSize;
 		for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
+// TODO, replace this loop by the one in the "direct" writing strategy
 			std::copy_n(p_work->getDevice()->getBufferCpu() + bufferOffset + j, SCOOP_SIZE, m_buffer + (std::size_t)staggerNonce * SCOOP_SIZE + (std::size_t)j * staggerSize);
 		}
 

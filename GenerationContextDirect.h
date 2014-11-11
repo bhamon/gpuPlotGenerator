@@ -22,8 +22,12 @@ namespace cryo {
 namespace gpuPlotGenerator {
 
 class GenerationContextDirect : public GenerationContext {
+	private:
+		unsigned int m_staggerSize;
+		unsigned char* m_buffer;
+
 	public:
-		GenerationContextDirect(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<PlotsFile>& p_plotsFile);
+		GenerationContextDirect(const std::shared_ptr<GenerationConfig>& p_config, const std::shared_ptr<PlotsFile>& p_plotsFile, unsigned int p_staggerSize);
 		GenerationContextDirect(const GenerationContextDirect& p_other) = delete;
 
 		virtual ~GenerationContextDirect() throw ();
