@@ -30,12 +30,12 @@ std::size_t GenerationContextBuffer::getMemorySize() const {
 
 void GenerationContextBuffer::writeNonces(std::shared_ptr<GenerationWork>& p_work) throw (std::exception) {
 	unsigned int staggerSize = m_config->getStaggerSize();
-	std::size_t bufferOffset = 0;
-	for(unsigned int i = 0, end = p_work->getWorkSize() ; i < end ; ++i, bufferOffset += PLOT_SIZE) {
+	std::size_t deviceOffset = 0;
+	for(unsigned int i = 0, end = p_work->getWorkSize() ; i < end ; ++i) {
 		unsigned int staggerNonce = (m_noncesWritten + i) % staggerSize;
-		for(unsigned int j = 0 ; j < PLOT_SIZE ; j += SCOOP_SIZE) {
-// TODO, replace this loop by the one in the "direct" writing strategy
-			std::copy_n(p_work->getDevice()->getBufferCpu() + bufferOffset + j, SCOOP_SIZE, m_buffer + (std::size_t)staggerNonce * SCOOP_SIZE + (std::size_t)j * staggerSize);
+		std::size_t cpuOffset = staggerNonce * SCOOP_SIZE;
+		for(unsigned int j = 0 ; j < SCOOPS_PER_PLOT ; ++j, deviceOffset += SCOOP_SIZE, cpuOffset += staggerSize * SCOOP_SIZE) {
+			std::copy_n(p_work->getDevice()->getBufferCpu() + deviceOffset, SCOOP_SIZE, m_buffer + cpuOffset);
 		}
 
 		if(staggerNonce == staggerSize - 1) {

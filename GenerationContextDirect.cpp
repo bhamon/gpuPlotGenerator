@@ -40,7 +40,6 @@ void GenerationContextDirect::writeNonces(std::shared_ptr<GenerationWork>& p_wor
 		if(staggerNonce == m_staggerSize - 1) {
 			unsigned int staggerGroup = m_noncesWritten / m_staggerSize;
 			m_plotsFile->seek((std::streamoff)staggerGroup * m_staggerSize * SCOOP_SIZE, std::ios::beg);
-// TODO: good until up there!!!
 
 			std::size_t cpuOffset = 0;
 			std::size_t staggerLength = (std::size_t)m_staggerSize * SCOOP_SIZE;
