@@ -1,3 +1,7 @@
+4.1.0 (12/11/2014)
+ - [direct] writing strategy rewritten to enhance performances.
+ - [buffer] writing strategy slightly enhanced.
+
 4.0.2 (30/10/2014)
   - Parameter [buffersNb] replaced by [writerType] in the [generate] command (rotating buffers removed).
   - Writing strategy is now handled by generation contexts.
