@@ -4,6 +4,8 @@
 namespace cryo {
 namespace gpuPlotGenerator {
 
+#include <string>
+
 const unsigned int HASH_SIZE = 32;
 const unsigned int HASHES_PER_SCOOP = 2;
 const unsigned int SCOOP_SIZE = HASHES_PER_SCOOP * HASH_SIZE;
