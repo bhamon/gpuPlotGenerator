@@ -9,7 +9,11 @@ OPENCL_LIB = ../_opencl/lib/win/x86
 CC = g++
 CC_FLAGS = -W -Wall -std=c++11 -O3 -I$(OPENCL_INCLUDE) -m$(PLATFORM)
 LD = g++
+ifeq ($(shell uname),Darwin)
+LD_FLAGS = -fPIC -L$(OPENCL_LIB) -framework OpenCL -m$(PLATFORM)
+else
 LD_FLAGS = -fPIC -L$(OPENCL_LIB) -lOpenCL -m$(PLATFORM)
+endif
 
 ECHO = echo
 MKDIR = mkdir

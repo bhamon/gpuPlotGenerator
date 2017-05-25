@@ -59,6 +59,22 @@ Run the following commands :
 
 The [dist] folder contains all the necessary files to launch the GPU plotter.
 
+### OS X
+
+Modify the [PLATFORM] variable to [64].
+Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
+Example:
+
+OPENCL_INCLUDE = /System/Library/Frameworks/OpenCL.framework/Versions/A/lib/clang/3.2/include
+OPENCL_LIB = /System/Library/Frameworks/OpenCL.framework
+
+Run the following commands :
+
+cd <this directory>
+make dist
+
+The [dist] folder contains all the necessary files to launch the GPU plotter.
+
 ## Setup
 
 The GPU plot generator needs a configured [devices.txt] file in order to work properly. The devices listed

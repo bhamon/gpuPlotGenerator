@@ -1,6 +1,8 @@
 #ifndef CRYO_GPU_PLOT_GENERATOR_CONSTANTS_H
 #define CRYO_GPU_PLOT_GENERATOR_CONSTANTS_H
 
+#include <string>
+
 namespace cryo {
 namespace gpuPlotGenerator {
 
