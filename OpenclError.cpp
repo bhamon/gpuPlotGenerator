@@ -27,7 +27,8 @@ OpenclError::OpenclError(const OpenclError& p_other)
 OpenclError::~OpenclError() throw () {}
 
 OpenclError& OpenclError::operator=(const OpenclError& p_other) {
-	*this = p_other;
+	std::runtime_error::operator=(p_other);
+
 	m_code = p_other.m_code;
 
 	return *this;
