@@ -1,10 +1,10 @@
 #ifndef CRYO_GPU_PLOT_GENERATOR_CONSTANTS_H
 #define CRYO_GPU_PLOT_GENERATOR_CONSTANTS_H
 
+#include <string>
+
 namespace cryo {
 namespace gpuPlotGenerator {
-
-#include <string>
 
 const unsigned int HASH_SIZE = 32;
 const unsigned int HASHES_PER_SCOOP = 2;
