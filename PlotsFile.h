@@ -32,6 +32,8 @@ class PlotsFile {
 		void read(unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
 		void write(const unsigned char* p_buffer, std::streamsize p_size) throw (std::exception);
 		void flush() throw (std::exception);
+
+		static void preallocate(const std::string& p_path, unsigned long long p_size) throw (std::exception);
 };
 
 }}

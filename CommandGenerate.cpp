@@ -138,7 +138,10 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 				unsigned int staggerSize = config->getStaggerSize();
 				config = std::shared_ptr<GenerationConfig>(new GenerationConfig(config->getPath(), config->getAddress(), config->getStartNonce(), config->getNoncesNumber(), config->getNoncesNumber()));
 
-				plotsFile = std::shared_ptr<PlotsFile>(new PlotsFile(config->getFullPath(), true));
+				unsigned long long size = static_cast<unsigned long long>(config->getNoncesNumber()) * PLOT_SIZE;
+				PlotsFile::preallocate(config->getFullPath(), size);
+
+				plotsFile = std::shared_ptr<PlotsFile>(new PlotsFile(config->getFullPath(), false));
 				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextDirect(config, plotsFile, staggerSize));
 			}
 
