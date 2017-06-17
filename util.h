@@ -81,10 +81,10 @@ std::string formatValue(T p_value, const std::vector<T>& p_units, const std::vec
 	std::vector<std::string>::const_iterator label(p_labels.begin() + parts.size() - 1);
 
 	std::ostringstream out;
-	out << *it++ << *label--;
+	out << *it++ << *label;
 
 	while(it != end) {
-		out << " " << *it++ << *label--;
+		out << " " << *it++ << *--label;
 	}
 
 	return out.str();
