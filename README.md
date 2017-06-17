@@ -19,45 +19,19 @@ If you like this software, support me ;)
 
 ## Build instructions
 
-### Windows
+- Install Git.
+- Install a compiler:
+	- Windows: Visual Studio (with C++ support).
+	- Linux: gcc/g++.
+	- Mac: XCode
+- Install NVidia or AMD SDK (depending on your graphic card).
+- Install CMake.
 
-Install msys/mingw.
-Install OpenCL (available in the manufacturer SDKs) or find the include/lib files on your hard drive (some drivers
-include those files).
+Clone this repository.
+Open CMake GUI and select the repository folder.
+Click on `Configure` and then on `Generate`.
 
-Modify the [PLATFORM] variable to one of [32] or [64] depending on the target platform.
-Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
-Example:
-
-	OPENCL_INCLUDE = c:\AMDAPPSDK-2.9-1\include
-	OPENCL_LIB = c:\AMDAPPSDK-2.9-1\lib\x86_64
-
-Run the following commands :
-
-	cd <this directory>
-	make dist
-
-The [dist] folder contains all the necessary files to launch the GPU plotter.
-
-### Linux
-
-Install the build-essential and g++ packets.
-Install OpenCL (available in the manufacturer SDKs).
-You may have to install the opencl headers ([apt-get install opencl-headers] on Ubuntu).
-
-Modify the [PLATFORM] variable to one of [32] or [64] depending on the target platform.
-Modify the [OPENCL_INCLUDE] and [OPENCL_LIB] variables of the Makefile to the correct path.
-Example:
-
-	OPENCL_INCLUDE = /opt/AMDAPPSDK-2.9-1/include
-	OPENCL_LIB = /opt/AMDAPPSDK-2.9-1/lib/x86_64
-
-Run the following commands :
-
-	cd <this directory>
-	make dist
-
-The [dist] folder contains all the necessary files to launch the GPU plotter.
+If OpenCL is not found on your system, select the OpenCL path manually (for the `OpenCL_INCLUDE_DIR` and `OpenCL_LIBRARY` variables).
 
 ## Setup
 
@@ -127,9 +101,14 @@ Don't forget to save before exiting.
 ### Generation
 
 This command generate nonces using the configured devices and write them to the specified output files.
-The generation parameters are inferred from the output files names. The files names format must be:
 
-	<address>_<startNonce>_<noncesNumber>_<staggerSize>
+The generation parameters are inferred from the output files names. The files names format must be: `<address>_<startNonce>_<noncesNumber>_<staggerSize>`
+
+The generation strategy can be one of:
+- `buffer`: The plots are ordered in a temporary RAM buffer which is written to disk upon completion. This strategy heavily reduces the number of IO operations on the disk, but the generated files should be optimized afterwards to enhance mining performances.
+- `direct`: The plots are directly written to disk, and then are already optimzed at the cost of many IO operations on the disk. For better performances, be sure to run the program with **administrative rights**.
+
+For both strategies, the `staggerSize` parameter controls the temporary RAM buffer size.
 
 Example usage:
 

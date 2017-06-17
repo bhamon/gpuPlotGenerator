@@ -1,3 +1,11 @@
+4.1.0 (17/06/2017)
+ - Build system changed to CMake.
+ - Pre-allocation added to [direct] writing strategy.
+ - Darwin native support added.
+ - Utility function `formatValue` corrected.
+ - Build documentation updated.
+ - Write strategies documented.
+
 4.0.4 (25/05/2017)
  - Bugs correction.
 
