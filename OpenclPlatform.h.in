@@ -14,7 +14,7 @@
 #include <vector>
 #include <exception>
 #include <memory>
-#include <CL/cl.h>
+#include <${OpenCL_INCLUDE}>
 
 namespace cryo {
 namespace gpuPlotGenerator {

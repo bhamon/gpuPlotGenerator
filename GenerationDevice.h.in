@@ -13,7 +13,7 @@
 #include <memory>
 #include <string>
 #include <exception>
-#include <CL/cl.h>
+#include <${OpenCL_INCLUDE}>
 
 #include "constants.h"
 #include "DeviceConfig.h"

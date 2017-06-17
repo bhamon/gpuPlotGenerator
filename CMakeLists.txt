@@ -6,6 +6,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 find_package(OpenCL REQUIRED)
 include_directories(${OpenCL_INCLUDE_DIR})
 
+configure_file("${PROJECT_SOURCE_DIR}/GenerationDevice.h.in" "${PROJECT_BINARY_DIR}/GenerationDevice.h")
+configure_file("${PROJECT_SOURCE_DIR}/OpenclDevice.h.in" "${PROJECT_BINARY_DIR}/OpenclDevice.h")
+configure_file("${PROJECT_SOURCE_DIR}/OpenclError.h.in" "${PROJECT_BINARY_DIR}/OpenclError.h")
+configure_file("${PROJECT_SOURCE_DIR}/OpenclPlatform.h.in" "${PROJECT_BINARY_DIR}/OpenclPlatform.h")
+
+include_directories("${PROJECT_BINARY_DIR}")
+
 set(GPU_PLOT_GENERATOR_SRC
 	Command.cpp
 	CommandGenerate.cpp
@@ -31,13 +38,9 @@ set(GPU_PLOT_GENERATOR_SRC
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	list(APPEND GPU_PLOT_GENERATOR_SRC PlotsFile-win.cpp)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	list(APPEND GPU_PLOT_GENERATOR_SRC PlotsFile-linux.cpp)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	list(APPEND GPU_PLOT_GENERATOR_SRC PlotsFile-mac.cpp)
 endif()
 

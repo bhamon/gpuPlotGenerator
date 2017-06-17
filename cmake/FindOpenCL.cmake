@@ -41,7 +41,7 @@ function(_FIND_OPENCL_VERSION)
   foreach(VERSION "2_0" "1_2" "1_1" "1_0")
     set(CMAKE_REQUIRED_INCLUDES "${OpenCL_INCLUDE_DIR}")
 
-    if(APPLE)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       # prefer the header from the Framework
       set(OSX_OpenCL_HEADER "${OpenCL_INCLUDE_DIR}/Headers/cl.h")
       if(EXISTS "${OpenCL_INCLUDE_DIR}/OpenCL/cl.h")
@@ -90,7 +90,7 @@ find_path(OpenCL_INCLUDE_DIR
 
 _FIND_OPENCL_VERSION()
 
-if(WIN32)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     find_library(OpenCL_LIBRARY
       NAMES OpenCL
@@ -130,15 +130,22 @@ endif()
 set(OpenCL_LIBRARIES ${OpenCL_LIBRARY})
 set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
 
+if(EXISTS "${OpenCL_INCLUDE_DIR}/OpenCL/cl.h")
+    set(OpenCL_INCLUDE "OpenCL/cl.h")
+else()
+    set(OpenCL_INCLUDE "CL/cl.h")
+endif()
+
 include(FindPackageHandleStandardArgs)
 # Ubuntu 12.04 / Travis CI have an old version of CMake that doesn't
 # support "FOUND_VAR OpenCL_FOUND". This could, in principle, be added
 # at a later date.
 find_package_handle_standard_args(
   OpenCL
-  REQUIRED_VARS OpenCL_LIBRARY OpenCL_INCLUDE_DIR
+  REQUIRED_VARS OpenCL_LIBRARY OpenCL_INCLUDE_DIR OpenCL_INCLUDE
   VERSION_VAR OpenCL_VERSION_STRING)
 
 mark_as_advanced(
   OpenCL_INCLUDE_DIR
-  OpenCL_LIBRARY)
+  OpenCL_LIBRARY
+  OpenCL_INCLUDE)
