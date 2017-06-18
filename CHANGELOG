@@ -1,3 +1,6 @@
+4.1.1 (17/06/2017)
+ - Pre-allocation error codes returned (windows version).
+
 4.1.0 (17/06/2017)
  - Build system changed to CMake.
  - Pre-allocation added to [direct] writing strategy.
