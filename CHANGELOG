@@ -1,3 +1,7 @@
+4.1.2 (22/06/2017)
+ - Missing thread library added to cmake.
+ - Linux version corrected.
+
 4.1.1 (17/06/2017)
  - Pre-allocation error codes returned (windows version).
 
