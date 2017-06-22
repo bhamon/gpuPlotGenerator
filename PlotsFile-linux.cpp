@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "constants.h"
 #include "PlotsFile.h"
