@@ -3,6 +3,7 @@ project(gpuPlotGenerator)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
+find_package(Threads REQUIRED)
 find_package(OpenCL REQUIRED)
 include_directories(${OpenCL_INCLUDE_DIR})
 
@@ -46,4 +47,4 @@ endif()
 
 add_executable(gpuPlotGenerator ${GPU_PLOT_GENERATOR_SRC})
 
-target_link_libraries(gpuPlotGenerator ${OpenCL_LIBRARY})
+target_link_libraries(gpuPlotGenerator ${CMAKE_THREAD_LIBS_INIT} ${OpenCL_LIBRARY})
