@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.1)
 project(gpuPlotGenerator)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -47,4 +47,5 @@ endif()
 
 add_executable(gpuPlotGenerator ${GPU_PLOT_GENERATOR_SRC})
 
+target_compile_features(gpuPlotGenerator PRIVATE cxx_deleted_functions cxx_lambdas cxx_long_long_type cxx_range_for cxx_right_angle_brackets)
 target_link_libraries(gpuPlotGenerator ${CMAKE_THREAD_LIBS_INIT} ${OpenCL_LIBRARY})
