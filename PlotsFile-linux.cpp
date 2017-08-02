@@ -9,7 +9,7 @@ namespace cryo {
 namespace gpuPlotGenerator {
 
 void PlotsFile::preallocate(const std::string& p_path, unsigned long long p_size) throw (std::exception) {
-	int fd = open(p_path.c_str(), O_RDWR | O_CREAT | O_TRUNC);
+	int fd = open(p_path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
 	if(fd == -1) {
 		throw std::runtime_error("Unable to open the output file");
 	}
