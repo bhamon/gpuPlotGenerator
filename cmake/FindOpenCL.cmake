@@ -122,6 +122,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
         lib/x64
         OpenCL/common/lib/x64)
   endif()
+elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_library(OpenCL_LIBRARY
+    NAMES libOpenCL.so
+    PATHS
+        ENV AMDAPPSDKROOT
+    PATH_SUFFIXES
+	lib/x86_64)
 else()
   find_library(OpenCL_LIBRARY
     NAMES OpenCL)
