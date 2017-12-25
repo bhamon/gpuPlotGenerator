@@ -254,7 +254,7 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 			console << ", " << std::fixed << std::setprecision(2) << speed << " nonces/minutes";
 			console << ", ETA: " << cryo::util::formatValue(estimatedTime, timeUnits, timeLabels);
 			console << "...";
-			std::cout << console.str();
+			std::cout << console.str() << std::flush;
 
 			barrier.wait(lock);
 		}
