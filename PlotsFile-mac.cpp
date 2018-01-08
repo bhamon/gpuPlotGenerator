@@ -14,7 +14,7 @@ void PlotsFile::preallocate(const std::string& p_path, unsigned long long p_size
 		throw std::runtime_error("Unable to open the output file");
 	}
 
-	if(fnctl(fd, F_SETSIZE, &p_size) == -1) {
+	if(fcntl(fd, F_SETSIZE, &p_size) == -1) {
 		if(ftruncate(fd, p_size) == -1) {
 			close(fd);
 			throw std::runtime_error("Unable to extend output file");
