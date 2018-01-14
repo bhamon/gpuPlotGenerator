@@ -152,7 +152,9 @@ std::vector<std::shared_ptr<OpenclDevice>> OpenclDevice::list(const std::shared_
 
 	cl_uint devicesNumber = 0;
 	error = clGetDeviceIDs(p_platform->getHandle(), CL_DEVICE_TYPE_ALL, 0, 0, &devicesNumber);
-	if(error != CL_SUCCESS) {
+	if(error == CL_DEVICE_NOT_FOUND) {
+		return list;
+	} else if(error != CL_SUCCESS) {
 		throw OpenclError(error, "Unable to retrieve the OpenCL devices number");
 	}
 
