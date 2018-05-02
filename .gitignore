@@ -1,1 +1,12 @@
 /build/
+/CMakeFiles/
+CMakeCache.txt
+/gpuPlotGenerator.dir/
+/x64/
+cmake_install.cmake
+Makefile
+GenerationDevice.h
+OpenclDevice.h
+OpenclError.h
+OpenclPlatform.h
+gpuPlotGenerator
