@@ -55,11 +55,12 @@ void CommandGenerate::help() const {
 	std::cout << "                     The <staggerSize> value will be used to configure the temporary RAM buffer size." << std::endl;
 	std::cout << "                     The output file will always have <staggerSize> = <noncesNumber>." << std::endl;
 	std::cout << "    - plotsFiles: A space-separated list of output files to generate." << std::endl;
-	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>] with:" << std::endl;
+	std::cout << "                  The file name has to be [<address>_<startNonce>_<noncesNumber>_<staggerSize>_<version>] with:" << std::endl;
 	std::cout << "                      - address: Burst numerical address." << std::endl;
 	std::cout << "                      - startNonce: First nonce of the plot generation." << std::endl;
 	std::cout << "                      - noncesNumber: Number of nonces to generate (must be a multiple of <staggerSize>)." << std::endl;
 	std::cout << "                      - staggerSize: Stagger size." << std::endl;
+	std::cout << "                      - version: File generation version (1 or 2)." << std::endl;
 }
 
 int CommandGenerate::execute(const std::vector<std::string>& p_args) {
@@ -136,7 +137,14 @@ int CommandGenerate::execute(const std::vector<std::string>& p_args) {
 				generationContext = std::shared_ptr<GenerationContext>(new GenerationContextBuffer(config, plotsFile));
 			} else if(writerType == "direct") {
 				unsigned int staggerSize = config->getStaggerSize();
-				config = std::shared_ptr<GenerationConfig>(new GenerationConfig(config->getPath(), config->getAddress(), config->getStartNonce(), config->getNoncesNumber(), config->getNoncesNumber()));
+				config = std::shared_ptr<GenerationConfig>(new GenerationConfig(
+					config->getPath(),
+					config->getAddress(),
+					config->getStartNonce(),
+					config->getNoncesNumber(),
+					config->getNoncesNumber(),
+					config->getVersion()
+				));
 
 				unsigned long long size = static_cast<unsigned long long>(config->getNoncesNumber()) * PLOT_SIZE;
 				PlotsFile::preallocate(config->getFullPath(), size);

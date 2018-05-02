@@ -33,8 +33,28 @@ void GenerationContextDirect::writeNonces(std::shared_ptr<GenerationWork>& p_wor
 	for(unsigned int i = 0, end = p_work->getWorkSize() ; i < end ; ++i) {
 		unsigned int staggerNonce = (m_noncesWritten + i) % m_staggerSize;
 		std::size_t cpuOffset = staggerNonce * SCOOP_SIZE;
-		for(unsigned int j = 0 ; j < SCOOPS_PER_PLOT ; ++j, deviceOffset += SCOOP_SIZE, cpuOffset += m_staggerSize * SCOOP_SIZE) {
-			std::copy_n(p_work->getDevice()->getBufferCpu() + deviceOffset, SCOOP_SIZE, m_buffer + cpuOffset);
+		for(
+			unsigned int j = 0 ;
+			j < SCOOPS_PER_PLOT ;
+			++j, deviceOffset += SCOOP_SIZE, cpuOffset += m_staggerSize * SCOOP_SIZE
+		) {
+			switch(m_config->getVersion()) {
+				case 1:
+					std::copy_n(p_work->getDevice()->getBufferCpu() + deviceOffset, SCOOP_SIZE, m_buffer + cpuOffset);
+					break;
+				case 2:
+					std::copy_n(
+						p_work->getDevice()->getBufferCpu() + PLOT_SIZE - deviceOffset - SCOOP_SIZE,
+						HASH_SIZE,
+						m_buffer + cpuOffset
+					);
+					std::copy_n(
+						p_work->getDevice()->getBufferCpu() + deviceOffset,
+						HASH_SIZE,
+						m_buffer + cpuOffset + HASH_SIZE
+					);
+					break;
+			}
 		}
 
 		if(staggerNonce == m_staggerSize - 1) {

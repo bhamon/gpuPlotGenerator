@@ -29,7 +29,7 @@ GenerationConfig::GenerationConfig(const std::string& p_fullPath) throw (std::ex
 	path.pop_back();
 
 	std::vector<std::string> parts(cryo::util::split(name, "_"));
-	if(parts.size() != 4) {
+	if(parts.size() != 5) {
 		throw std::runtime_error("Invalid file name");
 	}
 
@@ -42,10 +42,31 @@ GenerationConfig::GenerationConfig(const std::string& p_fullPath) throw (std::ex
 	m_startNonce = std::strtoull(parts[1].c_str(), 0, 10);
 	m_noncesNumber = std::atol(parts[2].c_str());
 	m_staggerSize = std::atol(parts[3].c_str());
+	m_version = std::atol(parts[4].c_str());
+
+	if(m_version < 1 || m_version > 2) {
+		throw std::runtime_error("Invalid generation version");
+	}
 }
 
-GenerationConfig::GenerationConfig(const std::string& p_path, unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_noncesNumber, unsigned int p_staggerSize)
-: m_path(p_path), m_address(p_address), m_startNonce(p_startNonce), m_noncesNumber(p_noncesNumber), m_staggerSize(p_staggerSize) {
+GenerationConfig::GenerationConfig(
+	const std::string& p_path,
+	unsigned long long p_address,
+	unsigned long long p_startNonce,
+	unsigned int p_noncesNumber,
+	unsigned int p_staggerSize,
+	unsigned int p_version
+) throw (std::exception)
+: m_path(p_path)
+, m_address(p_address)
+, m_startNonce(p_startNonce)
+, m_noncesNumber(p_noncesNumber)
+, m_staggerSize(p_staggerSize)
+, m_version(p_version) {
+	if(m_version < 1 || m_version > 2) {
+		throw std::runtime_error("Invalid generation version");
+	}
+
 	std::replace(m_path.begin(), m_path.end(), '\\', '/');
 	if(m_path.length() > 0 && m_path[m_path.length() - 1] != '/') {
 		m_path += "/";
@@ -53,7 +74,12 @@ GenerationConfig::GenerationConfig(const std::string& p_path, unsigned long long
 }
 
 GenerationConfig::GenerationConfig(const GenerationConfig& p_other)
-: m_path(p_other.m_path), m_address(p_other.m_address), m_startNonce(p_other.m_startNonce), m_noncesNumber(p_other.m_noncesNumber), m_staggerSize(p_other.m_staggerSize) {
+: m_path(p_other.m_path)
+, m_address(p_other.m_address)
+, m_startNonce(p_other.m_startNonce)
+, m_noncesNumber(p_other.m_noncesNumber)
+, m_staggerSize(p_other.m_staggerSize)
+, m_version(p_other.m_version) {
 }
 
 GenerationConfig::~GenerationConfig() throw () {
@@ -65,13 +91,21 @@ GenerationConfig& GenerationConfig::operator=(const GenerationConfig& p_other) {
 	m_startNonce = p_other.m_startNonce;
 	m_noncesNumber = p_other.m_noncesNumber;
 	m_staggerSize = p_other.m_staggerSize;
+	m_version = p_other.m_version;
 
 	return *this;
 }
 
 std::string GenerationConfig::getFullPath() const {
 	std::ostringstream path;
-	path << m_path << m_address << "_" << m_startNonce << "_" << m_noncesNumber << "_" << m_staggerSize;
+	path
+		<< m_path
+		<< m_address
+		<< "_" << m_startNonce
+		<< "_" << m_noncesNumber
+		<< "_" << m_staggerSize
+		<< "_" << m_version;
+
 	return path.str();
 }
 

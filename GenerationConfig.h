@@ -23,10 +23,18 @@ class GenerationConfig {
 		unsigned long long m_startNonce;
 		unsigned int m_noncesNumber;
 		unsigned int m_staggerSize;
+		unsigned int m_version;
 
 	public:
 		GenerationConfig(const std::string& p_fullPath) throw (std::exception);
-		GenerationConfig(const std::string& p_path, unsigned long long p_address, unsigned long long p_startNonce, unsigned int p_noncesNumber, unsigned int p_staggerSize);
+		GenerationConfig(
+			const std::string& p_path,
+			unsigned long long p_address,
+			unsigned long long p_startNonce,
+			unsigned int p_noncesNumber,
+			unsigned int p_staggerSize,
+			unsigned int p_version
+		) throw (std::exception);
 		GenerationConfig(const GenerationConfig& p_other);
 
 		virtual ~GenerationConfig() throw ();
@@ -39,6 +47,7 @@ class GenerationConfig {
 		inline unsigned long long getEndNonce() const;
 		inline unsigned int getNoncesNumber() const;
 		inline unsigned int getStaggerSize() const;
+		inline unsigned int getVersion() const;
 
 		std::string getFullPath() const;
 		unsigned long long getNoncesSize() const;
@@ -75,6 +84,10 @@ inline unsigned int GenerationConfig::getNoncesNumber() const {
 
 inline unsigned int GenerationConfig::getStaggerSize() const {
 	return m_staggerSize;
+}
+
+inline unsigned int GenerationConfig::getVersion() const {
+	return m_version;
 }
 
 }}
