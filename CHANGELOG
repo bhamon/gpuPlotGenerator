@@ -1,3 +1,7 @@
+4.2.0 (02/05/2018)
+ - Add native support for POC2 plots files generation.
+ - CMake OpenCL detection corrected.
+
 4.1.4 (08/01/2018)
  - Fix preallocation call for mac (thanks to cosminonea).
  - Console stream properly flushed (thanks to cosminonea).
