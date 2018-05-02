@@ -12,6 +12,7 @@ Features :
 - Embedded verification tool.
 - Easy setup with the embedded tool.
 - Clear generation information with percent done and estimated time of arrival.
+- Native POC2 support.
 
 Based on the code of the official miner and dcct's plotgen.
 
@@ -102,7 +103,7 @@ Don't forget to save before exiting.
 
 This command generate nonces using the configured devices and write them to the specified output files.
 
-The generation parameters are inferred from the output files names. The files names format must be: `<address>_<startNonce>_<noncesNumber>_<staggerSize>`
+The generation parameters are inferred from the output files names. The files names format must be: `<address>_<startNonce>_<noncesNumber>_<staggerSize>_<version>`
 
 The generation strategy can be one of:
 - `buffer`: The plots are ordered in a temporary RAM buffer which is written to disk upon completion. This strategy heavily reduces the number of IO operations on the disk, but the generated files should be optimized afterwards to enhance mining performances.
@@ -112,8 +113,9 @@ For both strategies, the `staggerSize` parameter controls the temporary RAM buff
 
 Example usage:
 
-	./gpuPlotGenerator generate buffer /path/to/files/123456_0_50000_5000 /path/123456_50000_10000_2000
+	./gpuPlotGenerator generate buffer /path/to/files/123456_0_50000_5000_1 /path/123456_50000_10000_2000_2
 	This call will generate two plots files using the "buffer" writing strategy.
+	The first file is POC1 compliant, the second one is POC2 compliant.
 
 ### Verification
 
@@ -121,8 +123,9 @@ This command verify overlapping nonces between two plots files. It is usefull to
 
 Example usage:
 
-	./gpuPlotGenerator verify /path/to/generated/123456_0_1000000_8000 /path/to/verification/123456_275000_10_10
+	./gpuPlotGenerator verify /path/to/generated/123456_0_1000000_8000_2 /path/to/verification/123456_275000_10_10_2
 	This call will verify that the nonces 275000 to 275009 matches between the two files.
+	The two files versions must match for the results to be meaningful.
 
 ## Troubleshooting
 
