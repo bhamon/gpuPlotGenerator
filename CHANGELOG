@@ -1,3 +1,6 @@
+4.2.1 (24/06/2018)
+ - POC2 overflow corrected.
+
 4.2.0 (02/05/2018)
  - Add native support for POC2 plots files generation.
  - CMake OpenCL detection corrected.
