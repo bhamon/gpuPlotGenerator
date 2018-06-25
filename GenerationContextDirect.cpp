@@ -51,12 +51,12 @@ void GenerationContextDirect::writeNonces(std::shared_ptr<GenerationWork>& p_wor
 					j += SCOOP_SIZE, cpuOffset += m_staggerSize * SCOOP_SIZE
 				) {
 					std::copy_n(
-						p_work->getDevice()->getBufferCpu() + deviceOffset + PLOT_SIZE - j - SCOOP_SIZE,
+						p_work->getDevice()->getBufferCpu() + deviceOffset + j,
 						HASH_SIZE,
 						m_buffer + cpuOffset
 					);
 					std::copy_n(
-						p_work->getDevice()->getBufferCpu() + deviceOffset + j,
+						p_work->getDevice()->getBufferCpu() + deviceOffset + PLOT_SIZE - j - HASH_SIZE,
 						HASH_SIZE,
 						m_buffer + cpuOffset + HASH_SIZE
 					);
